@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>同品項訂單批次整理</title>
+<title>神逝虛空｜同品項訂單批次整理</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
@@ -32,7 +32,8 @@ button,select,input{font:inherit;color:inherit}
 
 header{background:var(--ink);color:#fff;padding:14px 24px;border-bottom:6px solid transparent;
   border-image:repeating-linear-gradient(-45deg,var(--tape) 0 14px,var(--ink) 14px 28px) 6}
-header h1{margin:0;font-size:20px;font-weight:900;letter-spacing:.02em}
+header h1{margin:0;font-size:24px;font-weight:900;letter-spacing:.12em;line-height:1.2}
+header .subtitle{margin:2px 0 4px;font-size:15px;font-weight:700;color:var(--tape);opacity:1}
 header p{margin:0;opacity:.7;font-size:13px}
 header{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
 #verBtn{flex:none;background:transparent;border:1px solid var(--tape);color:var(--tape);border-radius:14px;padding:3px 12px;font-size:13px;font-weight:700;cursor:pointer;font-variant-numeric:tabular-nums}
@@ -204,7 +205,8 @@ tr.bagmiss td{background:var(--warn-bg)}
 <body>
 <header>
   <div>
-    <h1>同品項訂單批次整理</h1>
+    <h1>神逝虛空</h1>
+    <p class="subtitle">同品項訂單批次整理</p>
     <p>匯入客戶出庫單，相同組合的訂單分批包裝；組合太分散的散單轉成 SG 出庫單交給 SG 配單</p>
   </div>
   <button id="verBtn" type="button" aria-expanded="false" aria-controls="changelog" title="查看更新紀錄"></button>
@@ -669,6 +671,7 @@ function renderGiftRules(){
 
 /* ★★★ 版本：每次改版在最上面加一筆（版本號、日期、內容） ★★★ */
 const CHANGELOG = [
+  ['1.30', '2026-11-26', '系統主標題改為「神逝虛空」，「同品項訂單批次整理」改為副標題。'],
   ['1.29', '2026-11-26', '託運單新增 OCR（Tesseract.js，免費開源）：文字層、條碼、對照表都比不到的託運單（例如廠商自己印的新竹單，訂單編號和電話是圖片），自動讀圖片上的英文數字，跟這批訂單的訂單編號、電話、對照表託運單號比對（完全相符優先，8 碼以上允許錯 1 個字，同分交給人工）。只有比不到的才跑，第一次使用會下載約 4MB 辨識資料，每張約 1～2 秒。'],
   ['1.28', '2026-11-26', '託運單：一頁多張的 A4 超商單自動切成單張、一張一頁輸出（方便單張列印）：7-11 交貨便四格（含只印一張在左上角的）、萊爾富四格、便利帶八格用文字定位，全家／蝦皮等整張是圖片的用版面空白判斷 2×2；宅配通仍照原格子排。比對更準：短訂單編號（#31991）、嵌在寄貨編號裡的、直排的都找得到；訂單檔同一列其他欄位裡的編號（地址欄的 7-11 代碼、CVS 出貨編號）也能比對；單張 PDF 的檔名當訂單編號；新竹條碼旁有大字或標誌時先找條碼位置再解；空白頁略過。修正：新竹右上角的 #N 只有本專案下載過新竹上傳檔（單序已鎖定）才自動採用，否則列為人工確認（廠商自己印的新竹單 #N 不是這次的單序，以前會配錯）。訂單檔：收件人／電話／地址改成選填（蝦皮、超商單已印好）；單號空白但有收件人的列自動當一張訂單（以前會整張漏掉）；多分頁合併不再把「範例(請勿將資料填入此頁)」「（已出貨）」分頁、SG 出庫單分頁當訂單，同一批訂單的重複分頁（舊流程整理檔）不合併，不同名稱的同一種欄位（單號／訂單編號）合併時會對齊。'],
   ['1.27', '2026-11-26', '「發布播種任務」按鈕的說明改成跟著「每個檔案幾單」顯示實際每輪單數與輪數（原本固定寫 50，只是文字沒更新；實際輪次一直是照 SG 散單檔切）。'],
@@ -3512,7 +3515,7 @@ $('#backupFile').addEventListener('change', async e => {
 
 /* 版本號與更新紀錄 */
 $('#verBtn').textContent = `v${APP_VERSION} · ${CHANGELOG[0][1]}`;
-document.title = `同品項訂單批次整理 v${APP_VERSION}`;
+document.title = `神逝虛空｜同品項訂單批次整理 v${APP_VERSION}`;
 $('#changelogList').innerHTML = CHANGELOG.map(([v,d,c], i) =>
   `<li class="${i === 0 ? 'cur' : ''}"><span class="v">v${esc(v)}</span><span class="d">${esc(d)}</span><span class="c">${esc(c)}</span></li>`).join('');
 $('#verBtn').addEventListener('click', () => {
