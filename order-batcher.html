@@ -443,7 +443,7 @@ tr.bagmiss td{background:var(--warn-bg)}
       <button class="btn btn-secondary" id="dlBox" disabled hidden>下載分箱標籤資料<small>標籤（每袋一列）、分箱清單、現場查找表；標籤用「標籤列印系統」資料合併列印</small></button>
       <button class="btn btn-ghost" id="dlChk" disabled>下載缺件檢查單（SG）<small>全部可出訂單的商品加總成一張「訂單編號 1」，先上傳 SG 看哪些品項不夠；缺的到「SKU 對照」勾暫缺或填可出數量，再下載 SG 出庫單。檢查單上傳成功的話記得到 SG 刪掉</small></button>
       <button class="btn btn-loose" id="dlSg" disabled>下載 SG 出庫單<small id="dlSgNote">訂單編號欄＝新竹單序</small></button>
-      <button class="btn btn-secondary" id="pubSeed" disabled>發布播種任務<small>散單每 50 單一輪（＝層架 50 籃），指派的同事用手機播種</small></button>
+      <button class="btn btn-secondary" id="pubSeed" disabled>發布播種任務<small id="pubSeedNote">散單每 50 單一輪（層架最多 50 籃），同倉庫的同事用手機播種</small></button>
       <button class="btn btn-held" id="dlHeld" disabled hidden>下載待貨訂單（原格式）<small>缺貨商品到貨後，把這個檔案匯入重新整理</small></button>
       <button class="btn btn-ghost" id="printBatch" disabled>列印包裝批次表</button>
     </section>
@@ -669,6 +669,7 @@ function renderGiftRules(){
 
 /* ★★★ 版本：每次改版在最上面加一筆（版本號、日期、內容） ★★★ */
 const CHANGELOG = [
+  ['1.27', '2026-11-26', '「發布播種任務」按鈕的說明改成跟著「每個檔案幾單」顯示實際每輪單數與輪數（原本固定寫 50，只是文字沒更新；實際輪次一直是照 SG 散單檔切）。'],
   ['1.26', '2026-11-26', '新增「下載缺件檢查單（SG）」：要進 SG 的訂單商品（含贈品）依 SKU 加總成一張訂單編號 1 的單（取代電腦巨集的庫存測試單），先上傳 SG 看缺哪些品項，再到「SKU 對照」勾暫缺或填可出數量，缺件單就不會佔用單序與播種籃號。對應「物流方式」欄且有兩家以上物流時，物流成為最外層：單序在同一家物流內連續（物流先後照原檔出現順序），批次、SG 出庫單、上傳檔與播種輪次都不跨物流。發布播種任務改成選倉庫（同倉庫的同事在播種頁都看得到、點進去就加入，指派只是標記），每一輪記錄物流；不再把「物流上傳」設定（例如新竹）當成任務的物流。新增「託運單」分頁（取代 shipment.html 的暮雨流程，心茶仍用 shipment.html）：上傳託運單 PDF，宅配通 A4 一頁 6 張自動切格、7-11 用交貨便服務代碼、全家／新竹讀條碼，對照表從訂單檔的「7-11」「全家」分頁自動讀（也可另外上傳），新竹右上角 #N 視為單序；每家物流下載一份 PDF，依單序排列、右上角蓋 #單序，一頁多張的照原格子位置重排；待貨訂單的託運單拿掉另外列出，比對不到的看縮圖人工指定。'],
   ['1.25', '2026-11-25', '同一個 Excel 有兩個以上訂單分頁時（例如暮雨的「宅配」「超取」），工作表選單多「合併訂單分頁」並預設選用：依表頭文字對齊欄位、依分頁順序接起來，另加「分頁」欄；樞紐分析等非訂單工作表自動略過。搭配「不打亂原本排序」時，單序依分頁順序接續，SG 出庫單、上傳檔與播種輪次都依分頁分開（檔名加分頁名稱）。新增選填欄位「物流方式」：值含「超商」的訂單（7-11超商取貨、全家超商取貨…）SG 配送方式直接沿用，其他用分檔設定的 SG 配送方式。'],
   ['1.24', '2026-11-25', '「批次門檻」新增「不打亂原本排序」：勾選後照出庫單的原始列順序排單序，不開批次、全部當散單（包材分類與地址分區不套用），適合訂單順序已經跟廠商託運單一致的客戶（例如暮雨），可直接下載 SG 出庫單、發布播種任務。'],
@@ -743,6 +744,7 @@ function saveSettings(){
 }
 /* ---------- 地址分區 ---------- */
 const keepOrder = () => $('#keepOrder').checked;
+const SEED_SLOTS = 50;   // 播種層架格數（A 面 25＋B 面 25），一輪最多幾籃
 /* 物流方式欄的值歸成物流名稱（7-11超商取貨 → 7-11）；認不出來的保留原文；沒對應欄位時一律 '' */
 function shipGroup(v){
   const s = norm(v || ''); if(!s) return '';
@@ -1697,6 +1699,11 @@ function sgOrders(){ if(!state.result) return []; const {groupList, loose} = sta
 function sgNames(){ const s = new Set(); sgOrders().forEach(o => o.oNames.forEach(n => s.add(n))); return s; }
 function skuMissing(){ return state.result ? [...sgNames()].filter(n => !skuOf(n)) : []; }
 function updateSkuStatus(){
+  // 播種一輪＝一個 SG 散單檔裡的訂單，超過層架 50 籃再切
+  const per = $('#noSplit').checked ? SEED_SLOTS : Math.min(getChunk(), SEED_SLOTS);
+  $('#pubSeedNote').textContent = state.result && state.result.loose.length
+    ? `散單 ${fmt(state.result.loose.length)} 單 → ${seedRounds().length} 輪（每輪最多 ${per} 單，照 SG 散單檔切；層架最多 ${SEED_SLOTS} 籃）`
+    : `散單每 ${per} 單一輪（照 SG 散單檔切；層架最多 ${SEED_SLOTS} 籃）`;
   if(!state.result) return;
   const miss = skuMissing().length;
   const files = splitShipFiles('x', sgHasBatch(), sgHasLoose()).length;
@@ -2842,7 +2849,6 @@ function bindWbTab(){
    散單依 SG 出庫單的分檔切，每個檔再切成最多 50 單一輪；籃號＝這一輪的第幾單（A 面 1～25、B 面 26～50）。
    只上傳播種與檢查需要的資料：單序、訂單編號、收件人姓名、電話末三碼、訂單備註、商品；不上傳地址與完整電話。 */
 const SEEDING_URL = 'https://jay77jay.github.io/seeding/seeding.html';
-const SEED_SLOTS = 50;
 let fb = null;
 function fbInit(){
   if(fb) return fb;
@@ -3243,7 +3249,7 @@ $('#verBtn').addEventListener('click', () => {
 (async function init(){
   loadSettings(); syncScenesFromFeatures();
   $('#sgChunk').disabled = $('#noSplit').checked;
-  applyCarrierUI(); updateSummaries();
+  applyCarrierUI(); updateSummaries(); updateSkuStatus();
   try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(e){}
   const list = await refreshProjectList();
   let cur = null; try{ cur = localStorage.getItem(LS_CURRENT); }catch(e){}
