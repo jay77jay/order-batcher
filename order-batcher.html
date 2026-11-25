@@ -478,9 +478,9 @@ const FIELD_DEFS = [
   {key:'order',  label:'訂單編號',   req:true,  alias:['訂單編號','訂單號碼','訂單號','訂單序號','單號','order']},
   {key:'item',   label:'商品名稱',   req:true,  alias:['票種名稱','商品名稱','品名','商品','品項','規格']},
   {key:'qty',    label:'數量',       req:false, alias:['數量','件數','qty','quantity'], none:'（沒有，一列一件）'},
-  {key:'phone',  label:'收件人電話', req:true,  alias:['郵寄收件電話','郵寄收件人電話','收件人電話','收件人手機','收件電話','手機','電話']},
-  {key:'addr',   label:'收件人地址', req:true,  alias:['郵寄地址','收件人地址','收件地址','地址']},
-  {key:'name',   label:'收件人',     req:true,  alias:['郵寄收件人','郵寄收件人姓名','收件人姓名','收件人']},
+  {key:'phone',  label:'收件人電話', req:false, soft:true, none:'（沒有，例如蝦皮／超商託運單已印好）',  alias:['郵寄收件電話','郵寄收件人電話','收件人電話','收件人手機','收件電話','手機','電話']},
+  {key:'addr',   label:'收件人地址', req:false, soft:true, none:'（沒有，例如蝦皮／超商託運單已印好）',  alias:['郵寄地址','收件人地址','收件地址','地址']},
+  {key:'name',   label:'收件人',     req:false, soft:true, none:'（沒有，例如蝦皮／超商託運單已印好）',  alias:['郵寄收件人','郵寄收件人姓名','收件人姓名','收件人']},
   {key:'note',   label:'訂單備註',   req:false, alias:['訂單備註'], none:'（沒有）'},
   {key:'ship',   label:'物流方式（SG 配送方式）', req:false, alias:['物流方式','配送方式','運送方式'], none:'（沒有，用分檔設定的 SG 配送方式）'},
   {key:'price',  label:'單價（實際售價）', req:false, alias:['實際售價','售價','商品單價','單價'], none:'（沒有，用 SKU 對照表單價）'},
@@ -669,6 +669,7 @@ function renderGiftRules(){
 
 /* ★★★ 版本：每次改版在最上面加一筆（版本號、日期、內容） ★★★ */
 const CHANGELOG = [
+  ['1.28', '2026-11-26', '託運單：一頁多張的 A4 超商單自動切成單張、一張一頁輸出（方便單張列印）：7-11 交貨便四格（含只印一張在左上角的）、萊爾富四格、便利帶八格用文字定位，全家／蝦皮等整張是圖片的用版面空白判斷 2×2；宅配通仍照原格子排。比對更準：短訂單編號（#31991）、嵌在寄貨編號裡的、直排的都找得到；訂單檔同一列其他欄位裡的編號（地址欄的 7-11 代碼、CVS 出貨編號）也能比對；單張 PDF 的檔名當訂單編號；新竹條碼旁有大字或標誌時先找條碼位置再解；空白頁略過。修正：新竹右上角的 #N 只有本專案下載過新竹上傳檔（單序已鎖定）才自動採用，否則列為人工確認（廠商自己印的新竹單 #N 不是這次的單序，以前會配錯）。訂單檔：收件人／電話／地址改成選填（蝦皮、超商單已印好）；單號空白但有收件人的列自動當一張訂單（以前會整張漏掉）；多分頁合併不再把「範例(請勿將資料填入此頁)」「（已出貨）」分頁、SG 出庫單分頁當訂單，同一批訂單的重複分頁（舊流程整理檔）不合併，不同名稱的同一種欄位（單號／訂單編號）合併時會對齊。'],
   ['1.27', '2026-11-26', '「發布播種任務」按鈕的說明改成跟著「每個檔案幾單」顯示實際每輪單數與輪數（原本固定寫 50，只是文字沒更新；實際輪次一直是照 SG 散單檔切）。'],
   ['1.26', '2026-11-26', '新增「下載缺件檢查單（SG）」：要進 SG 的訂單商品（含贈品）依 SKU 加總成一張訂單編號 1 的單（取代電腦巨集的庫存測試單），先上傳 SG 看缺哪些品項，再到「SKU 對照」勾暫缺或填可出數量，缺件單就不會佔用單序與播種籃號。對應「物流方式」欄且有兩家以上物流時，物流成為最外層：單序在同一家物流內連續（物流先後照原檔出現順序），批次、SG 出庫單、上傳檔與播種輪次都不跨物流。發布播種任務改成選倉庫（同倉庫的同事在播種頁都看得到、點進去就加入，指派只是標記），每一輪記錄物流；不再把「物流上傳」設定（例如新竹）當成任務的物流。新增「託運單」分頁（取代 shipment.html 的暮雨流程，心茶仍用 shipment.html）：上傳託運單 PDF，宅配通 A4 一頁 6 張自動切格、7-11 用交貨便服務代碼、全家／新竹讀條碼，對照表從訂單檔的「7-11」「全家」分頁自動讀（也可另外上傳），新竹右上角 #N 視為單序；每家物流下載一份 PDF，依單序排列、右上角蓋 #單序，一頁多張的照原格子位置重排；待貨訂單的託運單拿掉另外列出，比對不到的看縮圖人工指定。'],
   ['1.25', '2026-11-25', '同一個 Excel 有兩個以上訂單分頁時（例如暮雨的「宅配」「超取」），工作表選單多「合併訂單分頁」並預設選用：依表頭文字對齊欄位、依分頁順序接起來，另加「分頁」欄；樞紐分析等非訂單工作表自動略過。搭配「不打亂原本排序」時，單序依分頁順序接續，SG 出庫單、上傳檔與播種輪次都依分頁分開（檔名加分頁名稱）。新增選填欄位「物流方式」：值含「超商」的訂單（7-11超商取貨、全家超商取貨…）SG 配送方式直接沿用，其他用分檔設定的 SG 配送方式。'],
@@ -935,7 +936,9 @@ async function loadFile(file, replace = false){
   state.fileBase = state.fileBase.replace(/_第\d+輪/, '').replace(/_接續單序\d+/, '');
   $('#fileName').textContent = file.name;
   fillSheetSel();
-  loadSheet(orderSheets().length >= 2 ? MERGE_KEY : state.wb.SheetNames[0], savedMap);   // 有兩個以上訂單分頁時預設合併
+  // 有兩個以上訂單分頁、而且訂單不重複時預設合併（暮雨的宅配＋超商）；重複的（舊流程整理檔）用第一個訂單分頁
+  const os0 = orderSheets();
+  loadSheet(os0.length >= 2 && !sheetsOverlap(os0) ? MERGE_KEY : (os0[0] || state.wb.SheetNames[0]), savedMap);
   // 新專案：訂單檔有「寄件人」欄時直接帶入，避免沿用上一個客戶的寄件人
   if(!replace){
     const si = state.headers.findIndex(h => normHeader(h) === '寄件人');
@@ -977,10 +980,30 @@ function headerRowOf(rows){
   return best;
 }
 const hasAlias = (hs, key) => FIELD_DEFS.find(f => f.key === key).alias.some(a => hs.some(h => normHeader(h) === normHeader(a)));
+// SG 出庫單格式的分頁（舊流程整理檔裡的「工作表SG出」）是輸出結果，不是訂單
+// 範本的範例頁（EZFUN 銷貨出庫單「範例(請勿將資料填入此頁)」）、已經出過的舊分頁（轉轉「1123出貨單（已出貨）」）不是這次的訂單
+const SKIP_SHEET = /範例|請勿|範本|已出貨|sample|example/i;
+const isSgSheet = hs => ['商城訂單編號','貨幣代碼','訂單狀態'].every(k => hs.some(h => normHeader(h) === normHeader(k)));
 function orderSheets(){
   if(!state.wb) return [];
   return state.wb.SheetNames.filter(n => { const x = sheetRowsOf(state.wb.Sheets[n]); if(!x || x.rows.length < 2) return false;
-    const hs = x.rows[headerRowOf(x.rows)]; return hasAlias(hs, 'order') && hasAlias(hs, 'item'); });
+    const hs = x.rows[headerRowOf(x.rows)]; return hasAlias(hs, 'order') && hasAlias(hs, 'item') && !isSgSheet(hs) && !SKIP_SHEET.test(n); });
+}
+// 欄位名稱 → 欄位種類（對到 FIELD_DEFS 的別名就用種類，例如「單號」「訂單編號」都是 order），合併分頁時用來對齊不同名稱的同一種欄位
+const fieldKeyOf = h => { const f = FIELD_DEFS.find(f => f.alias.some(a => normHeader(a) === normHeader(h))); return f ? '#' + f.key : normHeader(h); };
+// 各分頁的訂單編號、電話；兩個分頁有一半以上重複＝同一批訂單的不同版本（舊流程整理檔的工作表1／工作表2），不能合併
+function sheetKeys(n){
+  const x = sheetRowsOf(state.wb.Sheets[n]), hi = headerRowOf(x.rows), hs = x.rows[hi];
+  const col = key => { const f = FIELD_DEFS.find(f => f.key === key); for(const a of f.alias){ const i = hs.findIndex(h => normHeader(h) === normHeader(a)); if(i >= 0) return i; } return -1; };
+  const oi = col('order'), pi = col('phone'), ni = col('name'), ids = new Set(), phones = new Set(), names = new Set();
+  x.rows.slice(hi + 1).forEach(r => { if(oi >= 0 && normId(r[oi])) ids.add(normId(r[oi])); const p = pi >= 0 ? normId(r[pi]).replace(/\D/g, '').slice(-9) : ''; if(p.length >= 8) phones.add(p);
+    const nm = ni >= 0 ? normId(r[ni]) : ''; if(nm.length >= 2) names.add(nm); });
+  return {ids, phones, names};
+}
+function sheetsOverlap(names){
+  const ks = names.map(sheetKeys), ov = (a, b) => { if(!a.size || !b.size) return false; let n = 0; a.forEach(v => { if(b.has(v)) n++; }); return n >= Math.min(a.size, b.size) / 2; };
+  for(let i = 0; i < ks.length; i++) for(let j = i + 1; j < ks.length; j++) if(ov(ks[i].ids, ks[j].ids) || ov(ks[i].phones, ks[j].phones) || ov(ks[i].names, ks[j].names)) return true;
+  return false;
 }
 function fillSheetSel(){
   const os = orderSheets(), sel = $('#sheetSel');
@@ -993,12 +1016,14 @@ function buildMergedWs(names){
   names.forEach(n => {
     const ws = state.wb.Sheets[n], x = sheetRowsOf(ws), hi = headerRowOf(x.rows);
     const hs = x.rows[hi].map(h => norm(h));
-    const colMap = hs.map(h => { if(!h) return -1; let k = heads.findIndex(z => normHeader(z) === normHeader(h)); if(k < 0){ heads.push(h); k = heads.length - 1; } return k; });
+    const used = new Set();   // 同一個分頁裡兩欄對到同一種欄位時，第二欄照原名另外放
+    const colMap = hs.map(h => { if(!h) return -1; let key = fieldKeyOf(h); if(used.has(key)) key = normHeader(h); used.add(key);
+      let k = heads.findIndex(z => z.key === key); if(k < 0){ heads.push({key, h}); k = heads.length - 1; } return k; });
     parts.push({n, ws, x, hi, colMap});
   });
-  const sc = heads.length; heads.push(SHEET_COL);
+  const sc = heads.length; heads.push({h: SHEET_COL});
   const out = {}; let r = 0;
-  heads.forEach((h, c) => out[XLSX.utils.encode_cell({r, c})] = {t:'s', v:h});
+  heads.forEach((h, c) => out[XLSX.utils.encode_cell({r, c})] = {t:'s', v:h.h});
   parts.forEach(({n, ws, x, hi, colMap}) => {
     for(let i = hi + 1; i < x.rows.length; i++){
       if(x.rows[i].every(v => !norm(v))) continue;
@@ -1040,7 +1065,7 @@ function loadSheet(name, savedMap = null){
   for(const f of FIELD_DEFS){
     let idx = -1;
     for(const a of f.alias){ idx = state.headers.findIndex((h,i) => !used.has(i) && normHeader(h) === normHeader(a)); if(idx >= 0) break; }
-    if(idx < 0 && f.req) for(const a of f.alias){ idx = state.headers.findIndex((h,i) => !used.has(i) && normHeader(h).includes(normHeader(a))); if(idx >= 0) break; }
+    if(idx < 0 && (f.req || f.soft)) for(const a of f.alias){ idx = state.headers.findIndex((h,i) => !used.has(i) && normHeader(h).includes(normHeader(a))); if(idx >= 0) break; }
     state.map[f.key] = idx;
     if(idx >= 0) used.add(idx);
   }
@@ -1083,6 +1108,8 @@ function parse(){
   const m = state.map, warns = [], errors = [];
   const missing = FIELD_DEFS.filter(f => f.req && m[f.key] < 0).map(f => f.label);
   if(missing.length){ state.parsed = null; state.result = null; render({errors:[`請在欄位對應中選擇：${missing.join('、')}`], warns:[]}); return; }
+  const noRcpt = ['name','phone','addr'].filter(k => m[k] < 0).map(k => FIELD_DEFS.find(f => f.key === k).label);
+  if(noRcpt.length) warns.push(`沒有對應${noRcpt.join('、')}欄：新竹／便利帶上傳檔的這些欄位會是空白，只適合託運單已經印好的訂單（蝦皮、超商）。`);
 
   const orders = new Map();
   const fileSku = {}, filePrice = {};
@@ -1090,13 +1117,21 @@ function parse(){
   const statusSeen = new Map();
   const conflictSeen = new Set();
   const fieldLabel = {name:'收件人', phone:'收件人電話', addr:'收件人地址'};
+  let lastNoId = null, lastNoIdWho = null, noIdCount = 0;
 
   for(let i = state.headerIdx + 1; i < state.rows.length; i++){
     const row = state.rows[i];
     if(row.every(v => !norm(v))) continue;
     const excelRow = state.range.s.r + i + 1;
-    const id = normId(row[m.order]);
+    let id = normId(row[m.order]);
     const item = norm(row[m.item]);
+    // 單號空白、但有收件人或電話（廠商 B2B 手填的出庫單常這樣）：當成一張訂單，編號用「無單號-列號」；
+    // 接下來單號、收件人、電話都空白的列＝同一張訂單的其他商品
+    if(!id && item){
+      const who = norm(row[m.name]) + '|' + normId(row[m.phone]);
+      if(who !== '|' && who !== lastNoIdWho){ id = `無單號-${excelRow}`; lastNoId = id; lastNoIdWho = who; noIdCount++; }
+      else if(lastNoId) id = lastNoId;   // 同一個收件人連續好幾列、或收件人空白＝同一張訂單
+    }else if(id){ lastNoId = null; lastNoIdWho = null; }
     if(!id || !item){ warns.push(`第 ${excelRow} 列缺少訂單編號或商品名稱，已略過`); continue; }
 
     if(m.status >= 0){
@@ -1121,9 +1156,9 @@ function parse(){
       if(EMPTY_NOTES.includes(note)) note = '';
       o = {id, name:rec.name, rawPhone:rec.rawPhone, addr:rec.addr, note, items:new Map(), rowIdx:[], firstRow:excelRow, otime:m.otime >= 0 ? timeOf(i, m.otime) : null,
         sheet: state.sheetCol >= 0 ? norm(row[state.sheetCol]) : '', shipVia: m.ship >= 0 ? norm(row[m.ship]) : ''};
-      Object.assign(o, (({phone,status,note}) => ({phone, phoneStatus:status, phoneNote:note}))(cleanPhone(rec.rawPhone)));
+      Object.assign(o, (({phone,status,note}) => ({phone, phoneStatus:status, phoneNote:note}))(m.phone >= 0 ? cleanPhone(rec.rawPhone) : {phone:'', status:'ok', note:''}));
       orders.set(id, o);
-      const lack = ['name','addr'].filter(k => !rec[k]).map(k => fieldLabel[k]);
+      const lack = ['name','addr'].filter(k => m[k] >= 0 && !rec[k]).map(k => fieldLabel[k]);
       if(lack.length) warns.push(`訂單 ${id} 缺少${lack.join('、')}`);
     }else{
       const cmp = {name:[o.name, rec.name], phone:[o.rawPhone, rec.rawPhone], addr:[o.addr, rec.addr]};
@@ -1144,6 +1179,7 @@ function parse(){
     o.rowIdx.push(i);
   }
 
+  if(noIdCount) warns.unshift(`有 ${noIdCount} 張訂單的單號是空白，已用「無單號-列號」當訂單編號（連續同一個收件人、或收件人空白的列算同一張；請核對）。`);
   if(precisionHits) errors.push(`訂單編號欄有 ${precisionHits} 列是「數字格式」且超過 15 位，Excel 已經把尾數變掉，不同訂單可能被誤合併。請客戶把訂單編號欄設為文字後重新匯出。`);
   if(statusExcluded){
     const detail = [...statusSeen.entries()].map(([k,v]) => `「${k || '空白'}」${v} 列`).join('、');
@@ -2591,7 +2627,7 @@ $('#dlSg').addEventListener('click', async () => {
    一頁多張的版型輸出時照原本的格子位置重排（宅配通用印表機放原本的標籤紙印）。PDF 只在這個頁面處理，不上傳、不存檔。 */
 const wbState = {files: [], labels: [], extraLookup: new Map(), extraNames: [], busy: false, log: [], view: null, lkCache: null};
 const wbCode = s => String(s ?? '').normalize('NFKC').replace(/^="?|"$/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-const WB_CODE_HEAD = /出貨單編號|託運單號|交貨便服務代碼|服務代碼|貨運單號|追蹤號碼|物流單號|配送單號|查貨號碼|寄件編號/;
+const WB_CODE_HEAD = /出貨單編號|出貨編號|託運單號|交貨便服務代碼|服務代碼|貨運單號|追蹤號碼|物流單號|配送單號|查貨號碼|寄件編號/;
 // 對照表：表頭有「訂單編號」和託運單號類欄位的工作表，每列 託運單號 → 訂單編號（新竹 Summary 的「訂單號碼」是單序，不算）
 function wbTableRows(rows, out){
   for(let h = 0; h < Math.min(5, rows.length); h++){
@@ -2615,10 +2651,95 @@ function wbLookup(){
 }
 function wbCarrierOfText(t){
   if(/WebEdi/i.test(t)) return '宅配通';
-  if(/交貨便|統一超商|7-?ELEVEN/i.test(t)) return '7-11';
-  if(/FamilyMart|全家/i.test(t)) return '全家';
+  if(/交貨便|統一超商|7-?ELEVEN|seven/i.test(t)) return '7-11';
+  if(/FamilyMart|全家|family|fami/i.test(t)) return '全家';
+  if(/萊爾富|Hi-?Life/i.test(t)) return '萊爾富';
+  if(/轉運代碼|便利帶/.test(t)) return '便利帶';
   if(/新竹物流|HCT/i.test(t)) return '新竹';
+  if(/蝦皮|shopee/i.test(t)) return '蝦皮';
   return '';
+}
+/* 一頁多張的版型（宅配通 WebEdi 另外處理）：每張託運單固定只出現一次的字當錨點，A4 上依錨點位置切格。
+   7-11 交貨便 A4 一頁 4 張、萊爾富 A4 一頁 4 張、便利帶 A4 一頁 8 張；同一份 PDF 只有 1 張的頁面（最後一頁、單張 PDF）沿用前面頁面的格數，沒有就當 2×2。 */
+const WB_ANCHORS = [/交貨便服務代碼/, /寄取貨單/, /轉運代碼/];
+const wbCluster = vals => { const s = [...vals].sort((a, b) => a - b), o = []; s.forEach(v => { if(!o.length || v - o[o.length - 1] > 20) o.push(v); }); return o; };
+// 直排的單字（例如全家四格單邊緣直寫的 #31998）接成一串，放回文字項目
+function wbVertical(items){
+  const singles = items.filter(it => it.s.trim().length === 1).sort((a, b) => a.x - b.x || b.y - a.y), out = [];
+  let cur = null;
+  const flush = () => { if(cur && cur.s.length >= 3) out.push({s: cur.s, x: cur.x, y: cur.top}); };
+  singles.forEach(it => {
+    if(cur && Math.abs(it.x - cur.x) <= 2 && cur.y - it.y > 0 && cur.y - it.y <= 16){ cur.s += it.s.trim(); cur.y = it.y; }
+    else { flush(); cur = {s: it.s.trim(), x: it.x, y: it.y, top: it.y}; }
+  });
+  flush();
+  return out;
+}
+// 深色像素比例（每 4 個像素取 1 個）；dropCols：直條區每欄分開算，去掉最黑的幾欄（虛線裁切線），剩下的才算
+function wbInk(ctx, x, y, w, h, dropCols = 0, vertical = true){
+  x = Math.max(0, Math.round(x)); y = Math.max(0, Math.round(y)); w = Math.round(w); h = Math.round(h);
+  if(w < 2 || h < 2) return 0;
+  const d = ctx.getImageData(x, y, w, h).data, lines = new Array(vertical ? w : h).fill(0);
+  for(let yy = 0; yy < h; yy += 2) for(let xx = 0; xx < w; xx += 2){
+    const i = (yy * w + xx) * 4; if(d[i] + d[i + 1] + d[i + 2] < 384) lines[vertical ? xx : yy]++;
+  }
+  const sorted = [...lines].sort((a, b) => b - a), total = sorted.slice(dropCols).reduce((a, b) => a + b, 0);
+  return total / Math.max(1, (w * h) / 4);
+}
+// 沒有文字錨點的 A4 直式頁（全家、蝦皮等整張是圖片）：頁面正中間的十字（左右、上下各 3pt）只有虛線、沒有內容＝ 2×2 四格，
+// 回傳有內容的格子；否則 null（整頁一張）。ctx 要用大圖（2.5 倍），虛線才分得出來
+function wbInkGrid(ctx, cw, ch, W, H){
+  const bx = 6 * cw / W, by = 6 * ch / H;
+  const vInk = wbInk(ctx, cw / 2 - bx / 2, 0, bx, ch, 4, true), hInk = wbInk(ctx, 0, ch / 2 - by / 2, cw, by, 4, false);
+  if(vInk > 0.004 || hInk > 0.004) return null;
+  const cells = [];
+  [0, 1].forEach(r => [0, 1].forEach(c => {
+    if(wbInk(ctx, c * cw / 2 + cw * 0.02, r * ch / 2 + ch * 0.02, cw / 2 - cw * 0.04, ch / 2 - ch * 0.04) > 0.003)
+      cells.push({grid: true, x0: c * W / 2, x1: (c + 1) * W / 2, y1: H - r * H / 2, y0: H - (r + 1) * H / 2});
+  }));
+  return cells.length ? cells : null;
+}
+// 有錨點的頁：錨點間距＝格子大小；格線要畫在錨點旁固定距離的地方，找一個「每一格都不會切到文字」的距離
+// （CYBERBIZ 7-11 四格單的 #訂單編號 印在格子最上面、靠近頁面中線，直接切頁面一半會切錯格）
+function wbBestOffset(lines, pitch, cuts, ink){
+  // lines：錨點座標；cuts(L)：格線放在 L 會切到幾個文字；ink(L)：畫面上那條線有多黑（QR、條碼沒有文字層，要靠這個）
+  // 在 0～pitch 找切到最少字、而且最空白的距離；一樣好的取最長那一段的中間
+  const cost = [];
+  for(let u = 0; u <= pitch; u++) cost.push(lines.reduce((n, a) => n + cuts(a + u) + ink(a + u), 0));
+  const m = Math.min(...cost);
+  let best = null, run = null;
+  cost.forEach((c, u) => { if(c <= m + 0.01){ run = run || {s: u}; run.e = u; if(!best || run.e - run.s > best.e - best.s) best = {...run}; } else run = null; });
+  return (best.s + best.e) / 2;
+}
+// 畫面每一列／每一欄的深色比例（PDF 座標查詢）
+function wbInkLines(ctx, cw, ch, W, H){
+  const d = ctx.getImageData(0, 0, cw, ch).data, rows = new Float32Array(ch), cols = new Float32Array(cw);
+  for(let y = 0; y < ch; y++) for(let x = 0; x < cw; x++){ const i = (y * cw + x) * 4; if(d[i] + d[i + 1] + d[i + 2] < 384){ rows[y]++; cols[x]++; } }
+  const at = (arr, k, n) => { k = Math.round(k); return k < 0 || k >= arr.length ? 0 : arr[k] / n; };
+  return {row: y => at(rows, (H - y) * ch / H, cw), col: x => at(cols, x * cw / W, ch)};
+}
+function wbAnchorGrid(an, items, W, H, mem, inkL){
+  const xs = wbCluster(an.map(a => a.x)), ys = wbCluster(an.map(a => a.y));
+  if(xs.length >= 2) mem.px = xs[1] - xs[0];
+  if(ys.length >= 2) mem.py = ys[1] - ys[0];
+  const px = mem.px || W / 2, py = mem.py || H / 2;
+  // 上緣＝錨點往上 u、左緣＝錨點往左 v；要有兩列（兩欄）以上才算得出來，算過的記在這份 PDF，單張的頁面沿用；都沒有就用頁面平分
+  // 橫跨大半格的文字（頁首頁尾、瀏覽器列印的網址）不算
+  const its = items.filter(it => (it.w || 0) < Math.min(px, py) * 0.7);
+  // 只看兩列（兩欄）之間的格線；最上、最外側的格子邊緣會碰到頁首頁尾，不列入
+  if(ys.length >= 2) mem.u = wbBestOffset(ys.slice(0, -1), py, L => its.filter(it => it.y < L && it.y + 9 > L).length, inkL.row);
+  // 左右的格線只看畫面空白（頁首的日期、列印網址常印在標籤外側，會把可用範圍擋掉）
+  if(xs.length >= 2) mem.v = wbBestOffset(xs.slice(1).map(x => -x), px, () => 0, L => inkL.col(-L));
+  const nc = Math.max(1, Math.round(W / px)), nr = Math.max(1, Math.round(H / py)), cw = W / nc, rh = H / nr;
+  const out = [], seen = new Set();
+  an.forEach(a => {
+    const cx = xs.find(x => Math.abs(x - a.x) <= 20), cy = ys.find(y => Math.abs(y - a.y) <= 20), key = cx + ',' + cy;
+    if(seen.has(key)) return; seen.add(key);
+    const x0 = mem.v != null ? cx - mem.v : Math.floor(cx / cw) * cw, x1 = mem.v != null ? x0 + px : x0 + cw;
+    const y1 = mem.u != null ? cy + mem.u : H - Math.floor((H - cy) / rh) * rh, y0 = mem.u != null ? y1 - py : y1 - rh;
+    out.push({grid: true, x0: Math.max(0, x0), x1: Math.min(W, x1), y1: Math.min(H, y1), y0: Math.max(0, y0)});
+  });
+  return out.sort((a, b) => b.y1 - a.y1 || a.x0 - b.x0);
 }
 // 條碼：整張先試一次，再切成上下重疊的橫條各試一次（ZXing 一次只解一個條碼）
 function wbDecodeAll(canvas){
@@ -2639,7 +2760,47 @@ function wbDecodeAll(canvas){
   tryBox(0, H);
   const bh = Math.round(H / 4), step = Math.round(H / 8);
   for(let y = 0; y + bh <= H + step / 2; y += step) tryBox(Math.min(y, H - bh), bh);
+  // 一維條碼旁邊有大字或圖示時（新竹物流單的 HCT 標誌）整條掃會失敗：找出「黑白交替很密」的橫帶，只裁條碼那一塊再解
+  const tryRect = (x, y, w, h) => {
+    try{
+      const {data} = ctx.getImageData(x, y, w, h), lum = new Uint8ClampedArray(w * h);
+      for(let i = 0, p = 0; i < data.length; i += 4, p++) lum[p] = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114) | 0;
+      const res = reader.decode(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(new ZXing.RGBLuminanceSource(lum, w, h))));
+      if(res && res.getText()) out.add(res.getText());
+    }catch(e){}
+  };
+  wbBarcodeBands(ctx, W, H).forEach(b => tryRect(b.x, b.y, b.w, b.h));
   return [...out];
+}
+// 找一維條碼的位置：每一列算黑白交替次數，連續好幾列都很密、而且範圍差不多的地方就是條碼
+function wbBarcodeBands(ctx, W, H){
+  const d = ctx.getImageData(0, 0, W, H).data, rows = [];
+  const gap = Math.max(12, W * 0.03);
+  for(let y = 0; y < H; y++){
+    // 這一列的黑白交替點，間隔太大就分段，取交替最多的那一段（條碼兩旁的圖示、文字不算進去）
+    let prev = false, best = null, cur = null;
+    for(let x = 0; x < W; x++){
+      const i = (y * W + x) * 4, dark = d[i] + d[i + 1] + d[i + 2] < 384;
+      if(dark === prev) continue;
+      prev = dark;
+      if(cur && x - cur.last <= gap){ cur.last = x; cur.n++; }
+      else { cur = {first: x, last: x, n: 1}; }
+      if(!best || cur.n > best.n) best = cur;
+    }
+    rows.push(best && best.n >= 30 ? best : null);
+  }
+  const bands = [];
+  let s = -1;
+  for(let y = 0; y <= H; y++){
+    if(y < H && rows[y]){ if(s < 0) s = y; continue; }
+    if(s >= 0 && y - s >= Math.max(8, H / 60)){
+      const seg = rows.slice(s, y), fx = seg.map(r => r.first).sort((a, b) => a - b), lx = seg.map(r => r.last).sort((a, b) => a - b);
+      const x0 = fx[Math.floor(fx.length / 2)], x1 = lx[Math.floor(lx.length / 2)], pad = Math.round((x1 - x0) * 0.08) + 6;
+      bands.push({x: Math.max(0, x0 - pad), y: s, w: Math.min(W, x1 + pad) - Math.max(0, x0 - pad), h: y - s});
+    }
+    s = -1;
+  }
+  return bands.slice(0, 6);
 }
 function wbTokens(text){ return [...new Set((String(text).normalize('NFKC').toUpperCase().match(/[A-Z0-9][A-Z0-9\-]{4,}/g) || []).map(wbCode).filter(t => t.length >= 6))]; }
 async function wbAddFiles(list){
@@ -2663,46 +2824,62 @@ async function wbAddFiles(list){
       const file = {name: f.name, size: f.size, bytes, tpl: null};
       wbState.files.push(file);
       const doc = await pdfjsLib.getDocument({data: bytes.slice()}).promise;
-      const fileLabels = [];
+      const fileLabels = []; let blank = 0;
       for(let p = 1; p <= doc.numPages; p++){
         prog(`${f.name}：第 ${p}/${doc.numPages} 頁`);
         const page = await doc.getPage(p), vp = page.getViewport({scale: 1}), W = vp.width, H = vp.height;
-        const items = (await page.getTextContent()).items.filter(it => it.str && it.str.trim()).map(it => ({s: it.str, x: it.transform[4], y: it.transform[5]}));
-        const anchors = items.filter(it => /WebEdi/i.test(it.s));
-        let regions;
+        const raw = (await page.getTextContent()).items.filter(it => it.str && it.str.trim()).map(it => ({s: it.str, x: it.transform[4], y: it.transform[5], w: it.width}));
+        const items = [...raw, ...wbVertical(raw)];
+        // 先畫一張小圖：縮圖、判斷空白、沒有文字錨點時看版面
+        const sc = 0.7, cv = document.createElement('canvas'), v2 = page.getViewport({scale: sc});
+        cv.width = Math.ceil(v2.width); cv.height = Math.ceil(v2.height);
+        const c2 = cv.getContext('2d', {willReadFrequently: true}); c2.fillStyle = '#fff'; c2.fillRect(0, 0, cv.width, cv.height);
+        await page.render({canvasContext: c2, viewport: v2}).promise;
+        const anchors = raw.filter(it => /WebEdi/i.test(it.s));
+        const anchorRe = WB_ANCHORS.find(re => raw.some(it => re.test(it.s)));
+        let regions = null;
         if(anchors.length >= 2 || (anchors.length === 1 && W > 500)){
-          const cl = vals => { const s = [...vals].sort((a, b) => a - b), o = []; s.forEach(v => { if(!o.length || v - o[o.length - 1] > 20) o.push(v); }); return o; };
-          const xs = cl(anchors.map(a => a.x)), ys = cl(anchors.map(a => a.y)).reverse();
+          const xs = wbCluster(anchors.map(a => a.x)), ys = wbCluster(anchors.map(a => a.y)).reverse();
           regions = [];
           ys.forEach((yv, r) => xs.forEach((xv, c) => {
             if(!anchors.some(a => Math.abs(a.x - xv) <= 20 && Math.abs(a.y - yv) <= 20)) return;   // 最後一頁沒排滿的空格
-            regions.push({grid: true, ax: xv, ay: yv, x0: Math.max(0, xv - 6), x1: c + 1 < xs.length ? xs[c + 1] - 6 : W, y1: Math.min(H, yv + 16), y0: r + 1 < ys.length ? ys[r + 1] + 16 : 0});
+            regions.push({grid: true, tpl: true, ax: xv, ay: yv, x0: Math.max(0, xv - 6), x1: c + 1 < xs.length ? xs[c + 1] - 6 : W, y1: Math.min(H, yv + 16), y0: r + 1 < ys.length ? ys[r + 1] + 16 : 0});
           }));
-        }else regions = [{grid: false, x0: 0, y0: 0, x1: W, y1: H}];
-        // 縮圖（人工指定時看）＋沒有文字層時讀條碼
-        const need = regions.some(rg => items.filter(it => it.x >= rg.x0 && it.x < rg.x1 && it.y >= rg.y0 && it.y < rg.y1).map(it => it.s).join('').replace(/\s/g, '').length < 8);
-        const sc = need ? 2.5 : 0.7, cv = document.createElement('canvas'), v2 = page.getViewport({scale: sc});
-        cv.width = Math.ceil(v2.width); cv.height = Math.ceil(v2.height);
-        const c2 = cv.getContext('2d'); c2.fillStyle = '#fff'; c2.fillRect(0, 0, cv.width, cv.height);
-        await page.render({canvasContext: c2, viewport: v2}).promise;
+        }else if(anchorRe && W > 500) regions = wbAnchorGrid(raw.filter(it => anchorRe.test(it.s)), raw, W, H, file.mem || (file.mem = {}), wbInkLines(c2, cv.width, cv.height, W, H));
+        let big = null;   // 文字很少的格子要讀條碼、整頁是圖片的 A4 要看版面，用大圖（2.5 倍）
+        const bigCanvas = async () => { if(big) return big; const v3 = page.getViewport({scale: 2.5}); big = document.createElement('canvas'); big.width = Math.ceil(v3.width); big.height = Math.ceil(v3.height);
+          const c3 = big.getContext('2d', {willReadFrequently: true}); c3.fillStyle = '#fff'; c3.fillRect(0, 0, big.width, big.height); await page.render({canvasContext: c3, viewport: v3}).promise; return big; };
+        if(!regions && W > 500 && H > W && raw.map(it => it.s).join('').replace(/\s/g, '').length < 400){ const b = await bigCanvas(); regions = wbInkGrid(b.getContext('2d'), b.width, b.height, W, H); }
+        if(!regions) regions = [{grid: false, x0: 0, y0: 0, x1: W, y1: H}];
         for(const rg of regions){
           const its = items.filter(it => it.x >= rg.x0 && it.x < rg.x1 && it.y >= rg.y0 && it.y < rg.y1), text = its.map(it => it.s).join(' ');
-          const sub = document.createElement('canvas'), sx = rg.x0 * sc, sy = (H - rg.y1) * sc, sw = (rg.x1 - rg.x0) * sc, sh = (rg.y1 - rg.y0) * sc;
-          sub.width = Math.max(1, Math.round(sw)); sub.height = Math.max(1, Math.round(sh));
-          sub.getContext('2d').drawImage(cv, sx, sy, sw, sh, 0, 0, sub.width, sub.height);
+          const cut = (src, s) => { const sub = document.createElement('canvas'), sw = (rg.x1 - rg.x0) * s, sh = (rg.y1 - rg.y0) * s;
+            sub.width = Math.max(1, Math.round(sw)); sub.height = Math.max(1, Math.round(sh));
+            sub.getContext('2d', {willReadFrequently: true}).drawImage(src, rg.x0 * s, (H - rg.y1) * s, sw, sh, 0, 0, sub.width, sub.height); return sub; };
+          const small = cut(cv, sc), clen = text.replace(/\s/g, '').length;
+          if(!clen && wbInk(small.getContext('2d'), 0, 0, small.width, small.height) < 0.002){ blank++; continue; }   // 空白頁／空格
           let codes = [];
-          if(text.replace(/\s/g, '').length < 8){ prog(`${f.name}：第 ${p}/${doc.numPages} 頁讀條碼…`); codes = wbDecodeAll(sub); }
-          const th = document.createElement('canvas'), k = Math.min(1, 220 / sub.width);
-          th.width = Math.round(sub.width * k); th.height = Math.round(sub.height * k); th.getContext('2d').drawImage(sub, 0, 0, th.width, th.height);
-          const sm = text.match(/#\s*(\d{1,5})(?!\d)/);
-          const lb = {fi, page: p, grid: rg.grid, box: {x0: rg.x0, y0: rg.y0, x1: rg.x1, y1: rg.y1}, carrier: wbCarrierOfText(text + ' ' + f.name),
-            tokens: [...new Set([...wbTokens(text), ...codes.flatMap(wbTokens)])], codes: codes.map(wbCode), seqMark: sm ? Number(sm[1]) : null,
+          if(clen < 40){
+            prog(`${f.name}：第 ${p}/${doc.numPages} 頁讀條碼…`);
+            codes = wbDecodeAll(cut(await bigCanvas(), 2.5));
+          }
+          const th = document.createElement('canvas'), k = Math.min(1, 220 / small.width);
+          th.width = Math.round(small.width * k); th.height = Math.round(small.height * k); th.getContext('2d').drawImage(small, 0, 0, th.width, th.height);
+          // 右上角「#N」：只認單獨一個文字項目是 #1～#9999 的（直排拼出來的 #31998 是訂單編號，不是單序）
+          const smi = its.find(it => /^#\s*\d{1,4}$/.test(it.s.trim()));
+          const lb = {fi, page: p, grid: rg.grid, tplCell: !!rg.tpl, box: {x0: rg.x0, y0: rg.y0, x1: rg.x1, y1: rg.y1}, carrier: wbCarrierOfText(text + ' ' + f.name),
+            tokens: [...new Set([...wbTokens(text), ...codes.flatMap(wbTokens)])], codes: codes.map(wbCode), seqMark: smi ? Number(smi.s.replace(/\D/g, '')) : null,
+            hay: (text + ' | ' + codes.join(' | ')).normalize('NFKC').toUpperCase().replace(/[-_]/g, ''),
             text: text.slice(0, 200), thumb: th.toDataURL('image/jpeg', 0.7), manual: ''};
           fileLabels.push(lb); wbState.labels.push(lb);
         }
       }
-      // 一頁多張的版型：用格子最多的那頁當範本（格子位置與大小），最後一頁沒排滿的格子大小也照範本裁
-      const g = fileLabels.filter(l => l.grid);
+      // 一份 PDF 只有一張託運單時，檔名常常就是訂單編號（蝦皮「261121V96S9T8P.pdf」、7-11「711_H91149401430.pdf」），檔名也拿來比對
+      if(fileLabels.length === 1){ const lb = fileLabels[0], nm = f.name.replace(/\.pdf$/i, '');
+        lb.tokens = [...new Set([...lb.tokens, ...wbTokens(nm)])]; lb.hay += ' | ' + nm.normalize('NFKC').toUpperCase().replace(/[-_]/g, ' '); }
+      // 宅配通（標籤紙）：用格子最多的那頁當範本（格子位置與大小），輸出照原格子排、最後一頁沒排滿的格子大小也照範本裁。
+      // 其他一頁多張的（超商 A4 四格等）輸出時一張一頁，方便單張列印
+      const g = fileLabels.filter(l => l.tplCell);
       if(g.length){
         const byPage = new Map(); g.forEach(l => { if(!byPage.has(l.page)) byPage.set(l.page, []); byPage.get(l.page).push(l); });
         const best = [...byPage.values()].sort((a, b) => b.length - a.length)[0];
@@ -2710,11 +2887,22 @@ async function wbAddFiles(list){
         const cw = Math.min(...best.map(l => l.box.x1 - l.box.x0)), ch = Math.min(...best.map(l => l.box.y1 - l.box.y0));
         file.tpl = {W: W0.width, H: W0.height, cw, ch, slots: best.map(l => ({x0: l.box.x0, y1: l.box.y1}))};
       }
-      wbState.log.push(`${f.name}：${doc.numPages} 頁、${fileLabels.length} 張託運單${fileLabels.some(l => l.codes.length) ? `（${fileLabels.filter(l => l.codes.length).length} 張讀到條碼）` : ''}`);
+      wbState.log.push(`${f.name}：${doc.numPages} 頁、${fileLabels.length} 張託運單${fileLabels.some(l => l.codes.length) ? `（${fileLabels.filter(l => l.codes.length).length} 張讀到條碼）` : ''}${blank ? `，略過空白 ${blank} 處` : ''}${fileLabels.some(l => l.grid && !l.tplCell) ? '，一頁多張已切成單張' : ''}`);
     }
   }catch(e){ wbState.log.push('⚠ 讀取失敗：' + e.message); console.error(e); }
   wbState.busy = false; prog('');
   wbRefresh();
+}
+// 訂單檔每張訂單所有列、所有欄位裡的編號（6 碼以上英數）→ 訂單；出現在兩張以上訂單的（日期、SKU…）不算
+function wbRowTokens(r){
+  if(wbState.rowTokCache && wbState.rowTokCache.r === r) return wbState.rowTokCache.map;
+  const owner = new Map();
+  r.orders.forEach(o => (o.rowIdx || []).forEach(i => (state.rows[i] || []).forEach(v => wbTokens(v).forEach(t => {
+    const cur = owner.get(t); owner.set(t, cur === undefined || cur === o ? o : null);
+  }))));
+  const map = new Map([...owner].filter(([, o]) => o));
+  wbState.rowTokCache = {r, map};
+  return map;
 }
 // 比對：每張託運單找訂單；一張託運單只能對到一張訂單，對到多張就交給人工
 function wbResolve(){
@@ -2722,16 +2910,30 @@ function wbResolve(){
   const ids = new Map(); r.orders.forEach((o, id) => ids.set(wbCode(id), o));
   const lk = wbLookup(), bySeq = new Map();
   r.orders.forEach(o => { if(!o.held && o.seq != null) bySeq.set(o.seq, o); });
+  // 在託運單文字裡找訂單編號：短編號（#31991）、嵌在別的編號裡的（CYBERBIZ 寄貨訂單編號 S13146O31991R0）也找得到；
+  // 前後不能接著數字（31991 不會對到 319910），純數字至少 5 碼、含英文至少 4 碼
+  const idRes = [...ids.entries()].filter(([k]) => k.length >= (/^\d+$/.test(k) ? 5 : 4))
+    .map(([k, o]) => [o, new RegExp((/^\d/.test(k) ? '(?<!\\d)' : '(?<![A-Z0-9])') + k + (/\d$/.test(k) ? '(?!\\d)' : '(?![A-Z0-9])'))]);
+  const rowTok = wbRowTokens(r);
   const res = wbState.labels.map(lb => {
     if(lb.manual) return {o: r.orders.get(lb.manual) || null, how: '人工指定', cands: []};
     const hits = new Map(), add = (o, how) => { if(o && !hits.has(o.id)) hits.set(o.id, {o, how}); };
     lb.tokens.forEach(t => { add(ids.get(t), lb.codes.length ? '條碼' : '訂單編號'); const v = lk.map.get(t); if(v) add(ids.get(wbCode(v)), lb.codes.length ? '條碼＋對照表' : '對照表'); });
+    if(!hits.size && lb.hay) idRes.forEach(([o, re]) => { if(re.test(lb.hay)) add(o, '訂單編號'); });
     if(!hits.size && lb.codes.length){   // QR 內容可能是一長串，裡面含訂單編號或託運單號
       const j = lb.codes.join('|');
       ids.forEach((o, k) => { if(k.length >= 8 && j.includes(k)) add(o, '條碼'); });
       lk.map.forEach((v, k) => { if(k.length >= 8 && j.includes(k)) add(ids.get(wbCode(v)), '條碼＋對照表'); });
     }
-    if(!hits.size && lb.seqMark != null) add(bySeq.get(lb.seqMark), `單序 #${lb.seqMark}`);
+    // 訂單檔同一列其他欄位裡的編號（例如 7-11 代碼放在地址欄、CVS 出貨編號、備註裡的平台單號），只用只屬於一張訂單的編號
+    if(!hits.size) lb.tokens.forEach(t => add(rowTok.get(t), '訂單檔資料'));
+    // 新竹右上角的 #N：只有這個專案下載過新竹上傳檔（單序已鎖定）時才確定是這次的單序；
+    // 否則可能是廠商自己或舊流程的編號（暮雨 11/24 實測 4 張全部對錯），交給人工確認
+    if(!hits.size && lb.seqMark != null){
+      const o = bySeq.get(lb.seqMark);
+      if(state.seqLock) add(o, `單序 #${lb.seqMark}`);
+      else return {o: null, how: `右上角 #${lb.seqMark}（單序沒鎖定，請確認）`, cands: o ? [o] : []};
+    }
     const hs = [...hits.values()];
     return hs.length === 1 ? {o: hs[0].o, how: hs[0].how, cands: []} : {o: null, how: hs.length ? '對到多張訂單' : '找不到訂單', cands: hs.map(h => h.o)};
   });
@@ -2778,7 +2980,7 @@ function wbPanel(){
     h += `<h3 style="margin:16px 0 6px;font-size:15px;color:var(--warn)">要人工指定（${R.bad.length} 張${fix.length > R.bad.length ? `，已指定 ${fix.length - R.bad.length} 張` : ''}）</h3><p class="hint">看縮圖上的收件人，選對應的訂單；沒指定的不會輸出。選錯可以改回「（不輸出）」。</p>
       <div style="display:flex;flex-wrap:wrap;gap:10px">${fix.map(i => `<div style="border:1px solid ${L[i].manual ? 'var(--ok,#2f7d4f)' : 'var(--warn)'};border-radius:8px;padding:8px;width:200px">${thumb(i)}
         <div class="hint">${where(i)}・${esc(L[i].manual ? '人工指定' : R.res[i].how)}${L[i].carrier ? '・' + esc(L[i].carrier) : ''}</div>
-        ${R.res[i].cands.length ? `<div class="hint">候選：${R.res[i].cands.map(o => esc(`${o.seq ?? '待貨'} ${o.name}`)).join('、')}</div>` : ''}
+        ${R.res[i].cands.length ? `<div class="hint">候選：${R.res[i].cands.map(o => esc(`${o.seq ?? '待貨'} ${o.name}`)).join('、')}${/^右上角/.test(R.res[i].how) ? '<br><b style="color:var(--warn)">請先核對縮圖上的收件人，不同就不是這張</b>' : ''}</div>` : ''}
         <select data-wbi="${i}" style="width:100%"><option value="">（不輸出）</option>${opts.map((o, k) => `<option value="${k}" ${L[i].manual === o.id ? 'selected' : ''}>${esc(`${o.seq ?? '待貨'}・${o.name}・${o.id}`)}</option>`).join('')}</select></div>`).join('')}</div>`;
   }
   if(R.heldL.length) h += `<h3 style="margin:16px 0 6px;font-size:15px">待貨訂單的託運單：已拿掉，不會輸出（${R.heldL.length} 張）</h3><p class="hint">這些訂單這次不出，託運單請另外收好，到貨後再出。</p>
@@ -2815,6 +3017,11 @@ async function wbDownload(gi, btn){
       if(!lb.grid){
         const emb = await out.embedPage(sp), pg = out.addPage([emb.width, emb.height]);
         pg.drawPage(emb, {x: 0, y: 0}); wbStamp(pg, 0, 0, emb.width, emb.height, tag, font); cur = null; continue;
+      }
+      if(!lb.tplCell || !wbState.files[lb.fi].tpl){   // 超商 A4 四格等：切下這一格，一張一頁
+        const b = lb.box, w = b.x1 - b.x0, h = b.y1 - b.y0;
+        const emb = await out.embedPage(sp, {left: b.x0, right: b.x1, top: b.y1, bottom: b.y0}), pg = out.addPage([w, h]);
+        pg.drawPage(emb, {x: 0, y: 0, width: w, height: h}); wbStamp(pg, 0, 0, w, h, tag, font); cur = null; continue;
       }
       // 一頁多張：依範本格子由上而下、由左而右填
       const T = wbState.files[lb.fi].tpl;
