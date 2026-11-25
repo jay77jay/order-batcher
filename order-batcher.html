@@ -669,6 +669,7 @@ function renderGiftRules(){
 
 /* ★★★ 版本：每次改版在最上面加一筆（版本號、日期、內容） ★★★ */
 const CHANGELOG = [
+  ['1.29', '2026-11-26', '託運單新增 OCR（Tesseract.js，免費開源）：文字層、條碼、對照表都比不到的託運單（例如廠商自己印的新竹單，訂單編號和電話是圖片），自動讀圖片上的英文數字，跟這批訂單的訂單編號、電話、對照表託運單號比對（完全相符優先，8 碼以上允許錯 1 個字，同分交給人工）。只有比不到的才跑，第一次使用會下載約 4MB 辨識資料，每張約 1～2 秒。'],
   ['1.28', '2026-11-26', '託運單：一頁多張的 A4 超商單自動切成單張、一張一頁輸出（方便單張列印）：7-11 交貨便四格（含只印一張在左上角的）、萊爾富四格、便利帶八格用文字定位，全家／蝦皮等整張是圖片的用版面空白判斷 2×2；宅配通仍照原格子排。比對更準：短訂單編號（#31991）、嵌在寄貨編號裡的、直排的都找得到；訂單檔同一列其他欄位裡的編號（地址欄的 7-11 代碼、CVS 出貨編號）也能比對；單張 PDF 的檔名當訂單編號；新竹條碼旁有大字或標誌時先找條碼位置再解；空白頁略過。修正：新竹右上角的 #N 只有本專案下載過新竹上傳檔（單序已鎖定）才自動採用，否則列為人工確認（廠商自己印的新竹單 #N 不是這次的單序，以前會配錯）。訂單檔：收件人／電話／地址改成選填（蝦皮、超商單已印好）；單號空白但有收件人的列自動當一張訂單（以前會整張漏掉）；多分頁合併不再把「範例(請勿將資料填入此頁)」「（已出貨）」分頁、SG 出庫單分頁當訂單，同一批訂單的重複分頁（舊流程整理檔）不合併，不同名稱的同一種欄位（單號／訂單編號）合併時會對齊。'],
   ['1.27', '2026-11-26', '「發布播種任務」按鈕的說明改成跟著「每個檔案幾單」顯示實際每輪單數與輪數（原本固定寫 50，只是文字沒更新；實際輪次一直是照 SG 散單檔切）。'],
   ['1.26', '2026-11-26', '新增「下載缺件檢查單（SG）」：要進 SG 的訂單商品（含贈品）依 SKU 加總成一張訂單編號 1 的單（取代電腦巨集的庫存測試單），先上傳 SG 看缺哪些品項，再到「SKU 對照」勾暫缺或填可出數量，缺件單就不會佔用單序與播種籃號。對應「物流方式」欄且有兩家以上物流時，物流成為最外層：單序在同一家物流內連續（物流先後照原檔出現順序），批次、SG 出庫單、上傳檔與播種輪次都不跨物流。發布播種任務改成選倉庫（同倉庫的同事在播種頁都看得到、點進去就加入，指派只是標記），每一輪記錄物流；不再把「物流上傳」設定（例如新竹）當成任務的物流。新增「託運單」分頁（取代 shipment.html 的暮雨流程，心茶仍用 shipment.html）：上傳託運單 PDF，宅配通 A4 一頁 6 張自動切格、7-11 用交貨便服務代碼、全家／新竹讀條碼，對照表從訂單檔的「7-11」「全家」分頁自動讀（也可另外上傳），新竹右上角 #N 視為單序；每家物流下載一份 PDF，依單序排列、右上角蓋 #單序，一頁多張的照原格子位置重排；待貨訂單的託運單拿掉另外列出，比對不到的看縮圖人工指定。'],
@@ -2890,8 +2891,66 @@ async function wbAddFiles(list){
       wbState.log.push(`${f.name}：${doc.numPages} 頁、${fileLabels.length} 張託運單${fileLabels.some(l => l.codes.length) ? `（${fileLabels.filter(l => l.codes.length).length} 張讀到條碼）` : ''}${blank ? `，略過空白 ${blank} 處` : ''}${fileLabels.some(l => l.grid && !l.tplCell) ? '，一頁多張已切成單張' : ''}`);
     }
   }catch(e){ wbState.log.push('⚠ 讀取失敗：' + e.message); console.error(e); }
+  try{ await wbOcrPass(prog); }catch(e){ wbState.log.push('⚠ OCR 失敗（可能是網路問題），比不到的請人工指定：' + e.message); console.error(e); }
   wbState.busy = false; prog('');
   wbRefresh();
+}
+/* ---------- OCR（Tesseract.js，免費開源）：只處理比不到訂單的託運單 ----------
+   例如廠商自己印的新竹單：訂單編號、電話印成圖片、條碼又解不出來。
+   放大到約 300 DPI、只認英文數字，讀出來的字只拿去跟「這批訂單本來就有的」訂單編號、電話比，
+   允許錯 1 個字（8 碼以上才允許）；對到兩張以上照樣交給人工。第一次用要下載約 4MB 的辨識資料。 */
+const OCR_JS = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+let ocrWorker = null;
+function loadScript(src){ return new Promise((ok, bad) => { if([...document.scripts].some(s => s.src === src)) return ok(); const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => bad(new Error('載入失敗 ' + src)); document.head.appendChild(s); }); }
+async function wbOcrWorker(){
+  if(ocrWorker) return ocrWorker;
+  await loadScript(OCR_JS);
+  ocrWorker = await Tesseract.createWorker('eng');
+  await ocrWorker.setParameters({tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-#', tessedit_pageseg_mode: '11'});
+  return ocrWorker;
+}
+async function wbOcrPass(prog){
+  const R = wbResolve(); if(!R) return;
+  const todo = R.bad.filter(i => !wbState.labels[i].ocrDone);
+  if(!todo.length) return;
+  const worker = await wbOcrWorker(), docs = new Map();
+  let hit = 0;
+  for(let k = 0; k < todo.length; k++){
+    const lb = wbState.labels[todo[k]]; lb.ocrDone = true;
+    prog(`OCR 讀圖片上的字：${k + 1}/${todo.length}`);
+    if(!docs.has(lb.fi)) docs.set(lb.fi, await pdfjsLib.getDocument({data: wbState.files[lb.fi].bytes.slice()}).promise);
+    const page = await docs.get(lb.fi).getPage(lb.page), sc = 300 / 72, H = page.getViewport({scale: 1}).height, b = lb.box;
+    const vp = page.getViewport({scale: sc}), full = document.createElement('canvas');
+    full.width = Math.ceil(vp.width); full.height = Math.ceil(vp.height);
+    const fc = full.getContext('2d'); fc.fillStyle = '#fff'; fc.fillRect(0, 0, full.width, full.height);
+    await page.render({canvasContext: fc, viewport: vp}).promise;
+    const cv = document.createElement('canvas'); cv.width = Math.round((b.x1 - b.x0) * sc); cv.height = Math.round((b.y1 - b.y0) * sc);
+    cv.getContext('2d').drawImage(full, b.x0 * sc, (H - b.y1) * sc, cv.width, cv.height, 0, 0, cv.width, cv.height);
+    const {data} = await worker.recognize(cv);
+    lb.ocrText = (data.text || '').normalize('NFKC').toUpperCase();
+    lb.ocrToks = [...new Set((lb.ocrText.match(/[A-Z0-9]{6,}/g) || []))];
+    full.width = full.height = 0;
+  }
+  const R2 = wbResolve();
+  todo.forEach(i => { if(R2.res[i].o && /OCR/.test(R2.res[i].how)) hit++; });
+  wbState.log.push(`OCR：${todo.length} 張比不到的託運單讀圖片上的字，對上 ${hit} 張`);
+}
+// OCR 讀到的字比對訂單編號、電話：完全包含，或 8 碼以上錯 1 個字（同長度逐字比）
+// 每張訂單算分：完全相符 2 分、錯 1 個字 1 分（編號、電話、託運單號各自算，同一個編號只算最高分）；取最高分，同分就交給人工
+function wbOcrMatch(toks, keys){
+  const score = new Map();
+  for(const [k, o] of keys){
+    let best = 0;
+    for(const t of toks){
+      if(t.includes(k)){ best = 2; break; }
+      if(k.length < 8 || t.length < k.length || best) continue;
+      for(let s = 0; s + k.length <= t.length; s++){ let d = 0; for(let j = 0; j < k.length && d <= 1; j++) if(t[s + j] !== k[j]) d++; if(d <= 1){ best = 1; break; } }
+    }
+    if(best) score.set(o, (score.get(o) || 0) + best);
+  }
+  if(!score.size) return [];
+  const top = Math.max(...score.values());
+  return [...score].filter(([, v]) => v === top).map(([o]) => o);
 }
 // 訂單檔每張訂單所有列、所有欄位裡的編號（6 碼以上英數）→ 訂單；出現在兩張以上訂單的（日期、SKU…）不算
 function wbRowTokens(r){
@@ -2915,6 +2974,12 @@ function wbResolve(){
   const idRes = [...ids.entries()].filter(([k]) => k.length >= (/^\d+$/.test(k) ? 5 : 4))
     .map(([k, o]) => [o, new RegExp((/^\d/.test(k) ? '(?<!\\d)' : '(?<![A-Z0-9])') + k + (/\d$/.test(k) ? '(?!\\d)' : '(?![A-Z0-9])'))]);
   const rowTok = wbRowTokens(r);
+  // OCR 比對用：訂單編號（6 碼以上）、電話後 9 碼、對照表的託運單號（8 碼以上）
+  let ocrKeys = null;
+  const ocrKeysOf = () => ocrKeys || (ocrKeys = [
+    ...[...ids].filter(([k]) => k.length >= 6),
+    ...[...r.orders.values()].filter(o => o.phone && o.phone.length >= 9).map(o => [o.phone.slice(-9), o]),
+    ...[...lk.map].filter(([k]) => k.length >= 8).map(([k, v]) => [k, ids.get(wbCode(v))]).filter(([, o]) => o)]);
   const res = wbState.labels.map(lb => {
     if(lb.manual) return {o: r.orders.get(lb.manual) || null, how: '人工指定', cands: []};
     const hits = new Map(), add = (o, how) => { if(o && !hits.has(o.id)) hits.set(o.id, {o, how}); };
@@ -2929,6 +2994,7 @@ function wbResolve(){
     if(!hits.size) lb.tokens.forEach(t => add(rowTok.get(t), '訂單檔資料'));
     // 新竹右上角的 #N：只有這個專案下載過新竹上傳檔（單序已鎖定）時才確定是這次的單序；
     // 否則可能是廠商自己或舊流程的編號（暮雨 11/24 實測 4 張全部對錯），交給人工確認
+    if(!hits.size && lb.ocrToks && lb.ocrToks.length) wbOcrMatch(lb.ocrToks, ocrKeysOf()).forEach(o => add(o, 'OCR'));
     if(!hits.size && lb.seqMark != null){
       const o = bySeq.get(lb.seqMark);
       if(state.seqLock) add(o, `單序 #${lb.seqMark}`);
