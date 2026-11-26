@@ -280,6 +280,8 @@ tr.bagmiss td{background:var(--warn-bg)}
       <div class="fbody">
       <label class="check keepbox"><input type="checkbox" id="keepOrder">
         <span><b>不打亂原本排序</b>：照出庫單的原始順序排單序，不開批次、全部當散單（廠商的訂單順序已經跟託運單一致時用，例如暮雨）。可直接下載 SG 出庫單、發布播種任務。</span></label>
+      <label class="check keepbox"><input type="checkbox" id="carrierSplit">
+        <span><b>依物流分段</b>：有對應「物流方式」欄、而且有兩家以上物流時，一家物流做完再換下一家（單序在同一家物流內連續；SG 出庫單、上傳檔、播種輪次都依物流分開）。單量大時用，例如暮雨；不勾就全部一起排，每張單的 SG 配送方式仍照物流方式欄填。</span></label>
       <div id="thrNormal">
       <div class="field">
         <label for="threshold">幾單以上開批次</label>
@@ -671,6 +673,7 @@ function renderGiftRules(){
 
 /* ★★★ 版本：每次改版在最上面加一筆（版本號、日期、內容） ★★★ */
 const CHANGELOG = [
+  ['1.31', '2026-11-26', '新增「依物流分段」勾選框（批次門檻區，預設不勾）：原本只要物流方式欄有兩家以上物流就強制分段，現在要勾了才分；不勾時全部一起排單序、出一份檔，每張單的 SG 配送方式照樣依物流方式欄填，託運單分頁仍依實際物流分組與檢查缺單。訂單有多家物流但沒勾時，提醒區會說明。'],
   ['1.30', '2026-11-26', '系統主標題改為「神逝虛空」，「同品項訂單批次整理」改為副標題。'],
   ['1.29', '2026-11-26', '託運單新增 OCR（Tesseract.js，免費開源）：文字層、條碼、對照表都比不到的託運單（例如廠商自己印的新竹單，訂單編號和電話是圖片），自動讀圖片上的英文數字，跟這批訂單的訂單編號、電話、對照表託運單號比對（完全相符優先，8 碼以上允許錯 1 個字，同分交給人工）。只有比不到的才跑，第一次使用會下載約 4MB 辨識資料，每張約 1～2 秒。'],
   ['1.28', '2026-11-26', '託運單：一頁多張的 A4 超商單自動切成單張、一張一頁輸出（方便單張列印）：7-11 交貨便四格（含只印一張在左上角的）、萊爾富四格、便利帶八格用文字定位，全家／蝦皮等整張是圖片的用版面空白判斷 2×2；宅配通仍照原格子排。比對更準：短訂單編號（#31991）、嵌在寄貨編號裡的、直排的都找得到；訂單檔同一列其他欄位裡的編號（地址欄的 7-11 代碼、CVS 出貨編號）也能比對；單張 PDF 的檔名當訂單編號；新竹條碼旁有大字或標誌時先找條碼位置再解；空白頁略過。修正：新竹右上角的 #N 只有本專案下載過新竹上傳檔（單序已鎖定）才自動採用，否則列為人工確認（廠商自己印的新竹單 #N 不是這次的單序，以前會配錯）。訂單檔：收件人／電話／地址改成選填（蝦皮、超商單已印好）；單號空白但有收件人的列自動當一張訂單（以前會整張漏掉）；多分頁合併不再把「範例(請勿將資料填入此頁)」「（已出貨）」分頁、SG 出庫單分頁當訂單，同一批訂單的重複分頁（舊流程整理檔）不合併，不同名稱的同一種欄位（單號／訂單編號）合併時會對齊。'],
@@ -1270,7 +1273,8 @@ function group(){
     o.amount = amountOf(o); o.gifts = giftsFor(o);
     o.bagInfo = bagCalc(o);
     o.bag = bOn ? o.bagInfo.bag : '';
-    o.carrier = shipGroup(o.shipVia);
+    o.shipName = shipGroup(o.shipVia);
+    o.carrier = $('#carrierSplit').checked ? o.shipName : '';   // 沒勾「依物流分段」時物流不分組（託運單分頁仍用 shipName）
   }
   // 物流分組（有對應「物流方式」欄才有）：同仁一家物流做完再換下一家，所以物流是最外層，
   // 批次、散單、SG 檔、播種輪次都不跨物流；物流的先後照在原檔第一次出現的順序
@@ -1434,6 +1438,10 @@ function group(){
   if(multiCarrier()){
     const live = [...orders.values()].filter(o => !o.held);
     extraWarns.push(`依物流分段（照原檔出現順序）：${state.carrierKeys.map(c => { const os = live.filter(o => o.carrier === c); return `${c || '未填物流'} ${fmt(os.length)} 單（單序 ${Math.min(...os.map(o => o.seq))}–${Math.max(...os.map(o => o.seq))}）`; }).join('、')}。SG 出庫單、上傳檔與播種輪次都依物流分開。`);
+  }
+  else if(!$('#carrierSplit').checked){
+    const ns = [...new Set([...orders.values()].filter(o => !o.held).map(o => o.shipName).filter(Boolean))];
+    if(ns.length > 1) extraWarns.push(`訂單有 ${ns.length} 家物流（${ns.join('、')}），目前全部一起排單序；單量大、要一家做完再換下一家時，到「批次門檻」勾「依物流分段」。`);
   }
   state.bagStat = bagStats([...orders.values()].filter(o => !o.held));
   if(bOn){
@@ -3012,7 +3020,7 @@ function wbResolve(){
     if(!m.o){ bad.push(i); return; }
     used.set(m.o.id, (used.get(m.o.id) || 0) + 1);
     if(m.o.held || m.o.seq == null){ heldL.push(i); return; }
-    const key = m.o.carrier || lb.carrier || '其他';
+    const key = m.o.shipName || lb.carrier || '其他';
     if(!groups.has(key)) groups.set(key, []);
     groups.get(key).push(i);
   });
@@ -3020,7 +3028,7 @@ function wbResolve(){
   groups.forEach(list => list.sort((a, b) => { const x = ord(a), y = ord(b); for(let k = 0; k < x.length; k++) if(x[k] !== y[k]) return x[k] - y[k]; return 0; }));
   // 沒有託運單的訂單：只看有上傳託運單的物流（沒對應物流方式欄時看全部）
   const keys = new Set(groups.keys());
-  const missing = [...r.orders.values()].filter(o => !o.held && o.seq != null && !used.has(o.id) && (!o.carrier || keys.has(o.carrier))).sort((a, b) => a.seq - b.seq);
+  const missing = [...r.orders.values()].filter(o => !o.held && o.seq != null && !used.has(o.id) && (!o.shipName || keys.has(o.shipName))).sort((a, b) => a.seq - b.seq);
   const multi = [...used].filter(([, n]) => n > 1).map(([id, n]) => ({o: r.orders.get(id), n}));
   return {res, groups, heldL, bad, missing, multi, lk};
 }
@@ -3055,10 +3063,10 @@ function wbPanel(){
   if(R.heldL.length) h += `<h3 style="margin:16px 0 6px;font-size:15px">待貨訂單的託運單：已拿掉，不會輸出（${R.heldL.length} 張）</h3><p class="hint">這些訂單這次不出，託運單請另外收好，到貨後再出。</p>
     ${simpleTable([['訂單編號','收件人','缺的商品','託運單位置'], ...R.heldL.map(i => [O(i).id, O(i).name, (O(i).missing || []).map(n => nameMap[n] || n).join('、'), `${wbState.files[L[i].fi].name} 第 ${L[i].page} 頁`])])}`;
   if(R.missing.length) h += `<h3 style="margin:16px 0 6px;font-size:15px;color:var(--warn)">沒有託運單的訂單（${R.missing.length} 張）</h3><p class="hint">可能是那家物流的 PDF 還沒上傳、或託運單沒比對到（看上面「要人工指定」）。</p>
-    ${simpleTable([['單序','訂單編號','收件人','物流'], ...R.missing.map(o => [o.seq, o.id, o.name, o.carrier || ''])])}`;
+    ${simpleTable([['單序','訂單編號','收件人','物流'], ...R.missing.map(o => [o.seq, o.id, o.name, o.shipName || ''])])}`;
   if(R.multi.length) h += `<p class="hint">一張訂單對到多張託運單（多件包裹，會連在一起輸出）：${R.multi.map(x => esc(`#${x.o.seq ?? '待貨'} ${x.o.name} ${x.n} 張`)).join('、')}</p>`;
   h += `<details style="margin-top:12px"><summary>全部託運單（${L.length} 張）</summary>${simpleTable([['單序','訂單編號','收件人','物流','比對方式','位置'],
-    ...L.map((lb, i) => { const m = R.res[i]; return [m.o ? (m.o.seq ?? '待貨') : '', m.o ? m.o.id : '', m.o ? m.o.name : '', m.o ? (m.o.carrier || lb.carrier) : lb.carrier, m.how, `${wbState.files[lb.fi].name} 第 ${lb.page} 頁`]; })])}</details>`;
+    ...L.map((lb, i) => { const m = R.res[i]; return [m.o ? (m.o.seq ?? '待貨') : '', m.o ? m.o.id : '', m.o ? m.o.name : '', m.o ? (m.o.shipName || lb.carrier) : lb.carrier, m.how, `${wbState.files[lb.fi].name} 第 ${lb.page} 頁`]; })])}</details>`;
   return h;
 }
 function wbRefresh(){
@@ -3257,6 +3265,7 @@ $('#sgSeqName').addEventListener('change', rerender);
 $('#comboExpand').addEventListener('change', rerender);
 $('#looseSort').addEventListener('change', rerender);
 $('#keepOrder').addEventListener('change', rerender);
+$('#carrierSplit').addEventListener('change', rerender);
 $('#allocByTime').addEventListener('change', () => { saveSettings(); group(); });
 $('#sgShipVia').addEventListener('input', rerender);
 $('#giftAdd').addEventListener('click', () => {
