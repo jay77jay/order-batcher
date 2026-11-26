@@ -207,7 +207,7 @@ tr.bagmiss td{background:var(--warn-bg)}
   <div>
     <h1>神逝虛空</h1>
     <p class="subtitle">同品項訂單批次整理</p>
-    <p>匯入客戶出庫單，相同組合的訂單分批包裝；組合太分散的散單轉成 SG 出庫單交給 SG 配單</p>
+    <p>匯入客戶出庫單，相同組合的訂單分批包裝；組合太分散的散單分波用手機播種配貨；SG 用來檢查缺件與扣庫存</p>
   </div>
   <button id="verBtn" type="button" aria-expanded="false" aria-controls="changelog" title="查看更新紀錄"></button>
 </header>
@@ -281,13 +281,13 @@ tr.bagmiss td{background:var(--warn-bg)}
       <label class="check keepbox"><input type="checkbox" id="keepOrder">
         <span><b>不打亂原本排序</b>：照出庫單的原始順序排單序，不開批次、全部當散單（廠商的訂單順序已經跟託運單一致時用，例如暮雨）。可直接下載 SG 出庫單、發布播種任務。</span></label>
       <label class="check keepbox"><input type="checkbox" id="carrierSplit">
-        <span><b>依物流分段</b>：有對應「物流方式」欄、而且有兩家以上物流時，一家物流做完再換下一家（單序在同一家物流內連續；SG 出庫單、上傳檔、播種輪次都依物流分開）。單量大時用，例如暮雨；不勾就全部一起排，每張單的 SG 配送方式仍照物流方式欄填。</span></label>
+        <span><b>依物流分段</b>：有對應「物流方式」欄、而且有兩家以上物流時，一家物流做完再換下一家（單序在同一家物流內連續；SG 出庫單、上傳檔、播種波次都依物流分開）。單量大時用，例如暮雨；不勾就全部一起排，每張單的 SG 配送方式仍照物流方式欄填。</span></label>
       <div id="thrNormal">
       <div class="field">
         <label for="threshold">幾單以上開批次</label>
         <input type="number" id="threshold" min="2" step="1" value="5">
       </div>
-      <p class="hint">完全相同的組合達到這個單數才開批次包裝，未達的歸入散單交給 SG。點下表可直接套用。</p>
+      <p class="hint">完全相同的組合達到這個單數才開批次包裝，未達的歸入散單（用手機播種配貨）。點下表可直接套用。</p>
       <div id="thrTable"></div>
       <label class="check" style="margin-top:8px"><input type="checkbox" id="comboExpand" checked>
         <span>組合商品拆成元件後再分批與揀貨（同樣的實體內容排在同一批）</span></label>
@@ -315,7 +315,7 @@ tr.bagmiss td{background:var(--warn-bg)}
         <span>依破壞袋大小先分類，各袋型各自分批（一種袋做完再換下一種，大袋排前面）；上傳檔與 SG 出庫單也依袋型分檔</span></label>
       <p class="hint" id="bagHint">袋子尺寸、商品尺寸與 AI 估算結果在右側「包材」分頁設定。批次代號加上袋型第一個字（特A1、大A1、中A1、小A1）。</p>
       <label class="check" style="margin-top:10px"><input type="checkbox" id="boxOn">
-        <span>現場領取分箱：依袋型裝箱（最大袋＝A 箱、依序 B、C、D），產生箱號與袋標籤資料</span></label>
+        <span>現場領取分箱：依袋型裝箱（最大袋＝A 箱、依序 B、C、D），產生箱號（例：A箱01）與袋標籤資料</span></label>
       <div class="field" style="margin-top:8px">
         <label for="boxSize">每箱幾袋</label>
         <input type="number" id="boxSize" min="1" step="1" value="25">
@@ -425,7 +425,7 @@ tr.bagmiss td{background:var(--warn-bg)}
           <option value="loose">只有散單</option>
         </select>
       </div>
-      <p class="hint" id="sgChunkHint">批次區每個批次一個檔（超過 N 單再切），散單每 N 單一個檔。新竹上傳檔與 SG 出庫單用同樣的切法，檔名編號與單序範圍一一對應，打包成 ZIP 下載。</p>
+      <p class="hint" id="sgChunkHint">批次區每個批次一個檔（超過 N 單再切），散單每 N 單一個檔。新竹上傳檔與 SG 出庫單用同樣的切法，檔名編號與單序範圍一一對應，打包成 ZIP 下載。檔名開頭的序號依單序排列，照檔案總管的排序上傳即可。</p>
       </div>
     </details>
 
@@ -447,7 +447,8 @@ tr.bagmiss td{background:var(--warn-bg)}
       <button class="btn btn-secondary" id="dlBox" disabled hidden>下載分箱標籤資料<small>標籤（每袋一列）、分箱清單、現場查找表；標籤用「標籤列印系統」資料合併列印</small></button>
       <button class="btn btn-ghost" id="dlChk" disabled>下載缺件檢查單（SG）<small>全部可出訂單的商品加總成一張「訂單編號 1」，先上傳 SG 看哪些品項不夠；缺的到「SKU 對照」勾暫缺或填可出數量，再下載 SG 出庫單。檢查單上傳成功的話記得到 SG 刪掉</small></button>
       <button class="btn btn-loose" id="dlSg" disabled>下載 SG 出庫單<small id="dlSgNote">訂單編號欄＝新竹單序</small></button>
-      <button class="btn btn-secondary" id="pubSeed" disabled>發布播種任務<small id="pubSeedNote">散單每 50 單一輪（層架最多 50 籃），同倉庫的同事用手機播種</small></button>
+      <button class="btn btn-secondary" id="pubSeed" disabled>發布播種任務<small id="pubSeedNote">散單每 50 單一波（層架最多 50 籃），同倉庫的同事用手機播種</small></button>
+      <p class="hint" id="pubSeedFile" hidden style="color:var(--warn);margin:-2px 0 4px">這個頁面是直接用檔案開啟，無法登入發布播種任務。請改用線上版：<a href="https://jay77jay.github.io/order-batcher/" target="_blank" rel="noopener">jay77jay.github.io/order-batcher</a>（先在這裡「下載備份」，再到線上版「匯入備份」）</p>
       <button class="btn btn-held" id="dlHeld" disabled hidden>下載待貨訂單（原格式）<small>缺貨商品到貨後，把這個檔案匯入重新整理</small></button>
       <button class="btn btn-ghost" id="printBatch" disabled>列印包裝批次表</button>
     </section>
@@ -673,6 +674,7 @@ function renderGiftRules(){
 
 /* ★★★ 版本：每次改版在最上面加一筆（版本號、日期、內容） ★★★ */
 const CHANGELOG = [
+  ['1.32', '2026-11-26', '依新人審閱建議改：箱號改成「A箱01」，不再跟批次代號 A1 同名。物流上傳檔與 SG 出庫單的檔名開頭加全域序號（依單序、批次與散單共用、補零），檔案總管排序＝單序順序，有袋型、區名、物流時也不會亂。「依物流分段」改成跟著專案儲存（重新整理仍保留；新專案、舊專案一律從不勾開始，不會帶到別家廠商）。散單播種的單位改叫「波」（一個 SG 散單檔＝一波），「輪次」只用在分批到貨。左側區塊標題拿掉編號。功能已勾但區塊內還沒啟用時，區塊摘要會提示。用本機檔案開啟時，「發布播種任務」下方直接提示改用線上版。下載缺件檢查單後提醒區會一直提醒到 SG 刪掉檢查單，下載 SG 出庫單前也會再確認。散單相關說明改為用手機播種配貨。'],
   ['1.31', '2026-11-26', '新增「依物流分段」勾選框（批次門檻區，預設不勾）：原本只要物流方式欄有兩家以上物流就強制分段，現在要勾了才分；不勾時全部一起排單序、出一份檔，每張單的 SG 配送方式照樣依物流方式欄填，託運單分頁仍依實際物流分組與檢查缺單。訂單有多家物流但沒勾時，提醒區會說明。'],
   ['1.30', '2026-11-26', '系統主標題改為「神逝虛空」，「同品項訂單批次整理」改為副標題。'],
   ['1.29', '2026-11-26', '託運單新增 OCR（Tesseract.js，免費開源）：文字層、條碼、對照表都比不到的託運單（例如廠商自己印的新竹單，訂單編號和電話是圖片），自動讀圖片上的英文數字，跟這批訂單的訂單編號、電話、對照表託運單號比對（完全相符優先，8 碼以上允許錯 1 個字，同分交給人工）。只有比不到的才跑，第一次使用會下載約 4MB 辨識資料，每張約 1～2 秒。'],
@@ -752,7 +754,7 @@ function saveSettings(){
 }
 /* ---------- 地址分區 ---------- */
 const keepOrder = () => $('#keepOrder').checked;
-const SEED_SLOTS = 50;   // 播種層架格數（A 面 25＋B 面 25），一輪最多幾籃
+const SEED_SLOTS = 50;   // 播種層架格數（A 面 25＋B 面 25），一波最多幾籃
 /* 物流方式欄的值歸成物流名稱（7-11超商取貨 → 7-11）；認不出來的保留原文；沒對應欄位時一律 '' */
 function shipGroup(v){
   const s = norm(v || ''); if(!s) return '';
@@ -880,10 +882,13 @@ function assignBoxes(list){
     let b = cur.get(L);
     if(!b || (b.bags + nb > N && b.orders.length)){
       const no = boxes.filter(x => x.letter === L).length + 1;
-      b = {letter:L, bag:k, code:`${L}${no}`, orders:[], bags:0}; boxes.push(b); cur.set(L, b);
+      b = {letter:L, bag:k, no, code:'', orders:[], bags:0}; boxes.push(b); cur.set(L, b);
     }
-    b.orders.push(o); b.bags += nb; o.box = b.code;
+    b.orders.push(o); b.bags += nb;
   });
+  // v1.32 箱號寫成「A箱01」：跟批次代號（A1、特A1）分得開；補零讓檔案、清單排序正確（超過 99 箱時補到 3 位）
+  const cnt = new Map(); boxes.forEach(b => cnt.set(b.letter, (cnt.get(b.letter) || 0) + 1));
+  boxes.forEach(b => { b.code = `${b.letter}箱${String(b.no).padStart(Math.max(2, String(cnt.get(b.letter)).length), '0')}`; b.orders.forEach(o => { o.box = b.code; }); });
   boxes.sort((a,b) => bagRank(a.bag) - bagRank(b.bag) || a.orders[0].seq - b.orders[0].seq);
   return boxes;
 }
@@ -932,6 +937,8 @@ async function loadFile(file, replace = false){
     shortSet = new Set();   // 新專案從沒有暫缺開始
     availMap = {}; saveAvail();
     state.seqLock = null;   // 新專案沒有鎖定
+    $('#carrierSplit').checked = false;   // 依物流分段不帶到新專案（別家廠商）
+    state.chkPending = null;
   }
   state.fileName = file.name; state.fileData = buf;
   state.fileBase = file.name.replace(/\.[^.]+$/,'');
@@ -1277,7 +1284,7 @@ function group(){
     o.carrier = $('#carrierSplit').checked ? o.shipName : '';   // 沒勾「依物流分段」時物流不分組（託運單分頁仍用 shipName）
   }
   // 物流分組（有對應「物流方式」欄才有）：同仁一家物流做完再換下一家，所以物流是最外層，
-  // 批次、散單、SG 檔、播種輪次都不跨物流；物流的先後照在原檔第一次出現的順序
+  // 批次、散單、SG 檔、播種波次都不跨物流；物流的先後照在原檔第一次出現的順序
   const cFirst = new Map();
   [...ship].sort((a,b) => a.firstRow - b.firstRow).forEach(o => { if(!cFirst.has(o.carrier)) cFirst.set(o.carrier, cFirst.size); });
   state.carrierKeys = cFirst.size ? [...cFirst.keys()] : [''];
@@ -1437,7 +1444,7 @@ function group(){
   }
   if(multiCarrier()){
     const live = [...orders.values()].filter(o => !o.held);
-    extraWarns.push(`依物流分段（照原檔出現順序）：${state.carrierKeys.map(c => { const os = live.filter(o => o.carrier === c); return `${c || '未填物流'} ${fmt(os.length)} 單（單序 ${Math.min(...os.map(o => o.seq))}–${Math.max(...os.map(o => o.seq))}）`; }).join('、')}。SG 出庫單、上傳檔與播種輪次都依物流分開。`);
+    extraWarns.push(`依物流分段（照原檔出現順序）：${state.carrierKeys.map(c => { const os = live.filter(o => o.carrier === c); return `${c || '未填物流'} ${fmt(os.length)} 單（單序 ${Math.min(...os.map(o => o.seq))}–${Math.max(...os.map(o => o.seq))}）`; }).join('、')}。SG 出庫單、上傳檔與播種波次都依物流分開。`);
   }
   else if(!$('#carrierSplit').checked){
     const ns = [...new Set([...orders.values()].filter(o => !o.held).map(o => o.shipName).filter(Boolean))];
@@ -1681,11 +1688,13 @@ function render({errors, warns}){
       <div><b>${fmt(orders.size)}</b><span>訂單</span></div>
       <div class="batchstat"><b>${fmt(batchN)}</b><span>批次區訂單（占可出貨 ${Math.round(batchN/Math.max(1, orders.size - held.length)*100)}%）</span></div>
       <div><b>${fmt(subs)}</b><span>批次數</span></div>
-      <div class="loosestat"><b>${fmt(loose.length)}</b><span>散單（交 SG）</span></div>
+      <div class="loosestat"><b>${fmt(loose.length)}</b><span>散單（播種）</span></div>
       <div class="heldstat"><b>${fmt(held.length)}</b><span>待貨（缺貨）</span></div></div>`;
   }
-  if(errors.length || warns.length){
-    html += '<div class="alerts">';
+  // v1.32 下載過缺件檢查單、還沒確認在 SG 刪掉：一直提醒（檢查單留在 SG 會被當成真的訂單）
+  const chkAlert = state.chkPending ? `<div class="alert error">已下載缺件檢查單（訂單編號 1）。上傳 SG 檢查完後，記得到 SG 刪掉這張單，否則會被當成真的訂單。 <button class="btn btn-ghost" id="chkDone" type="button" style="display:inline-block;width:auto;padding:4px 12px;margin-left:6px">已在 SG 刪除</button></div>` : '';
+  if(errors.length || warns.length || chkAlert){
+    html += '<div class="alerts">' + chkAlert;
     errors.forEach(e => html += `<div class="alert error">${esc(e)}</div>`);
     if(warns.length) html += `<div class="alert">有 ${warns.length} 項需要留意：<ul>${warns.map(w => `<li>${esc(w)}</li>`).join('')}</ul></div>`;
     html += '</div>';
@@ -1698,9 +1707,9 @@ function render({errors, warns}){
   const maxRemark = Math.max(0, ...upAoa.slice(1).map(r => String(r[t.up.remarkCol]).length));
   const tabs = [
     ['batch','包裝批次', t.batch.length-1, `相同組合達 ${T} 單以上的訂單。同一批次內容完全相同，可連續包裝；單序對應新竹上傳檔與出貨標籤順序。`, batchTable(t.batch)],
-    ['pick','揀貨總量', t.pickT.length-1, '批次區由這裡整批揀齊；散單的數量交給 SG 處理，列出來供對照。', simpleTable(t.pickT, [2,3,4,5])],
+    ['pick','揀貨總量', t.pickT.length-1, '批次區由這裡整批揀齊；散單在播種頁每波一起撿，數量列出來供對照。', simpleTable(t.pickT, [2,3,4,5])],
     ['detail','批次訂單明細', t.detail.length-1, '批次區訂單依包裝順序排列，每張訂單一列。', simpleTable(t.detail, [0,7,9], [1], 1)],
-    ['loose','散單', t.looseGroups.length, (keepOrder() ? '已勾選「不打亂原本排序」：全部訂單照出庫單原始順序排單序（跟廠商託運單順序一致），不開批次。' : `組合不到 ${T} 單的訂單，已依品項相近程度排序，會轉成 SG 出庫單交給 SG 配單。`), groupTable(t.looseT, t.looseGroups, t.looseMergeCols)],
+    ['loose','散單', t.looseGroups.length, (keepOrder() ? '已勾選「不打亂原本排序」：全部訂單照出庫單原始順序排單序（跟廠商託運單順序一致），不開批次。' : `組合不到 ${T} 單的訂單，已依品項相近程度排序，會分波發布播種任務，用手機播種配貨（SG 出庫單只用來扣庫存）。`), groupTable(t.looseT, t.looseGroups, t.looseMergeCols)],
     ...(boxOn() ? [['box','分箱', t.boxSum.length-1, `現場領取：依袋型裝箱（${bagDefs.map((b,i) => `${groupLetter(i)} 箱＝${b.name}`).join('、')}），每箱最多 ${getBoxSize()} 袋，依單序一箱一箱裝。按左側「下載分箱標籤資料」取得標籤（每袋一列，到「標籤列印系統」的資料合併列印）、分箱清單（貼箱外）與現場查找表（依電話末三碼排序，現場找會員包裹用）。`,
       simpleTable(t.boxSum, [2,3], [0]) + `<h3 style="margin:16px 0 6px;font-size:15px">現場查找表（依電話末三碼）</h3>` + simpleTable(t.lookupT, [5], [4]) + `<h3 style="margin:16px 0 6px;font-size:15px">標籤資料（每袋一列）</h3>` + simpleTable(t.labelT, [], [0])]] : []),
     ['held','待貨', t.heldT.length-1, `含暫缺商品、或可出數量不夠分到的訂單，這次不出貨，也不編單序。按左側「下載待貨訂單（原格式）」存下來，到貨後匯入這個檔案，單序會自動從 ${fmt(state.result.nextSeq)} 接續。`, simpleTable(t.heldT, [4])],
@@ -1747,11 +1756,13 @@ function sgOrders(){ if(!state.result) return []; const {groupList, loose} = sta
 function sgNames(){ const s = new Set(); sgOrders().forEach(o => o.oNames.forEach(n => s.add(n))); return s; }
 function skuMissing(){ return state.result ? [...sgNames()].filter(n => !skuOf(n)) : []; }
 function updateSkuStatus(){
-  // 播種一輪＝一個 SG 散單檔裡的訂單，超過層架 50 籃再切
+  // 播種一波＝一個 SG 散單檔裡的訂單，超過層架 50 籃再切
   const per = $('#noSplit').checked ? SEED_SLOTS : Math.min(getChunk(), SEED_SLOTS);
-  $('#pubSeedNote').textContent = state.result && state.result.loose.length
-    ? `散單 ${fmt(state.result.loose.length)} 單 → ${seedRounds().length} 輪（每輪最多 ${per} 單，照 SG 散單檔切；層架最多 ${SEED_SLOTS} 籃）`
-    : `散單每 ${per} 單一輪（照 SG 散單檔切；層架最多 ${SEED_SLOTS} 籃）`;
+  $('#pubSeedFile').hidden = location.protocol !== 'file:';
+  if(location.protocol === 'file:') $('#pubSeedNote').textContent = '本機檔案開啟無法發布，請用線上版（連結在下方）';
+  else $('#pubSeedNote').textContent = state.result && state.result.loose.length
+    ? `散單 ${fmt(state.result.loose.length)} 單 → ${seedRounds().length} 波（每波最多 ${per} 單，照 SG 散單檔切；層架最多 ${SEED_SLOTS} 籃）`
+    : `散單每 ${per} 單一波（照 SG 散單檔切；層架最多 ${SEED_SLOTS} 籃）`;
   if(!state.result) return;
   const miss = skuMissing().length;
   const files = splitShipFiles('x', sgHasBatch(), sgHasLoose()).length;
@@ -2446,32 +2457,34 @@ function splitShipFiles(base, withBatch, withLoose){
   const bySheet = keepOrder() && state.sheetCol >= 0;
   const sheetParts = os => { if(!bySheet) return [['', os]]; const m = new Map(); os.forEach(o => { if(!m.has(o.sheet)) m.set(o.sheet, []); m.get(o.sheet).push(o); }); return [...m.entries()]; };
   const sn = sh => sh ? `_${sh}` : '';
+  // v1.32 檔名：{base}_{全域序號}{_物流}{_袋型}{_區名}{_分頁}_{批次_代號|散單|全部}_單序a-b.xlsx
+  // 序號依單序遞增、批次與散單共用、補零，檔案總管排序＝單序順序（袋型、區名的文字排序跟單序不同，所以序號放最前面）
+  const parts = [];   // [種類, 代號, 訂單, 分檔區塊, 分頁]
   if($('#noSplit').checked){
     const all = [...(withBatch ? groupList.flatMap(g => g.subList.flatMap(sb => sb.orders)) : []), ...(withLoose ? loose : [])];
     all.sort((a,b) => a.seq - b.seq);
-    zones().forEach(z => sheetParts(inZone(all, z)).forEach(([sh, os]) => { const split = z.carrier != null || z.bag != null || z.region != null || !!sh; if(os.length) files.push([`${base}${rn(z)}${sn(sh)}_全部_${range(os)}${split ? `_${os.length}單` : ''}.xlsx`, os, sh]); }));
-    return files;
+    zones().forEach(z => sheetParts(inZone(all, z)).forEach(([sh, os]) => { if(os.length) parts.push(['全部', '', os, z, sh]); }));
+  }else{
+    if(withBatch){
+      groupList.forEach(g => g.subList.forEach(sb => {
+        const n = Math.ceil(sb.orders.length / size);
+        for(let i = 0; i < n; i++) parts.push(['批次', sb.code + (n > 1 ? `-${i+1}of${n}` : ''), sb.orders.slice(i * size, (i + 1) * size), {carrier:cSplit ? sb.carrier : null, bag:bSplit ? sb.bag : null, region:rSplit ? sb.region : null}, '']);
+      }));
+    }
+    if(withLoose){
+      // 散單兩區混排時，散單檔不分區，讓每個檔的單序保持連續
+      // 「一區做完再換下一區」時散單一律依區分檔：兩區散單之間夾著另一區的批次，不分區的話散單檔會跳號
+      const looseByRegion = regionOn() && !looseMixed() && (rSplit || regionOrder() === 'zone');
+      zones(looseByRegion).forEach(z => sheetParts(inZone(loose, z)).forEach(([sh, ls]) => { for(let i = 0; i < ls.length; i += size) parts.push(['散單', '', ls.slice(i, i + size), z, sh]); }));
+    }
   }
-  if(withBatch){
-    const parts = [];
-    groupList.forEach(g => g.subList.forEach(sb => {
-      const n = Math.ceil(sb.orders.length / size);
-      for(let i = 0; i < n; i++) parts.push([sb.code + (n > 1 ? `-${i+1}of${n}` : ''), sb.orders.slice(i * size, (i + 1) * size), {carrier:cSplit ? sb.carrier : null, bag:bSplit ? sb.bag : null, region:rSplit ? sb.region : null}]);
-    }));
-    parts.sort((a,b) => a[1][0].seq - b[1][0].seq);
-    const w = String(parts.length).length;
-    parts.forEach(([label, os, z], i) => files.push([`${base}${rn(z)}_批次_${String(i+1).padStart(w,'0')}_${label}_${range(os)}.xlsx`, os]));
-  }
-  if(withLoose){
-    const chunks = [];
-    // 散單兩區混排時，散單檔不分區，讓每個檔的單序保持連續
-    // 「一區做完再換下一區」時散單一律依區分檔：兩區散單之間夾著另一區的批次，不分區的話散單檔會跳號
-    const looseByRegion = regionOn() && !looseMixed() && (rSplit || regionOrder() === 'zone');
-    zones(looseByRegion).forEach(z => sheetParts(inZone(loose, z)).forEach(([sh, ls]) => { for(let i = 0; i < ls.length; i += size) chunks.push([ls.slice(i, i + size), z, sh]); }));
-    chunks.sort((a,b) => a[0][0].seq - b[0][0].seq);
-    const w = String(chunks.length).length;
-    chunks.forEach(([os, k, sh], i) => files.push([`${base}${rn(k)}${sn(sh)}_散單_${String(i+1).padStart(w,'0')}_${range(os)}.xlsx`, os, sh]));
-  }
+  parts.sort((a,b) => a[2][0].seq - b[2][0].seq);
+  const w = Math.max(2, String(parts.length).length);
+  parts.forEach(([kind, label, os, z, sh], i) => {
+    const no = parts.length > 1 ? `_${String(i+1).padStart(w,'0')}` : '';
+    const cnt = kind === '全部' && parts.length > 1 ? `_${os.length}單` : '';
+    files.push([`${base}${no}${rn(z)}${sn(sh)}_${kind}${label ? `_${label}` : ''}_${range(os)}${cnt}.xlsx`, os, sh]);
+  });
   return files;
 }
 async function downloadFiles(files, zipName, makeBook, btn){
@@ -2610,10 +2623,15 @@ $('#dlChk').addEventListener('click', () => {
   const noSkuGift = giftOn() ? [...new Set(sgOrders().flatMap(o => (o.gifts || []).filter(g => !g.sku).map(g => g.name)))] : [];
   if(noSkuGift.length){ alert(`這些贈品還沒填 SKU：${noSkuGift.join('、')}\n請在左側「贈品」填寫。`); return; }
   const rows = checkSheetRows();
+  state.chkPending = Date.now(); scheduleSave(); group();
   XLSX.writeFile(sgWorkbook(rows), `${state.fileBase}_缺件檢查單SG上傳_${sgOrders().length}單_${rows.length - 1}品項_${today()}.xlsx`, XLSX_OPT);
 });
 $('#dlSg').addEventListener('click', async () => {
   if(!state.result || !sgOrders().length) return;
+  if(state.chkPending){
+    if(!confirm('缺件檢查單（訂單編號 1）還沒確認已從 SG 刪除。\n\n請先到 SG 刪掉檢查單，再上傳正式的 SG 出庫單，避免檢查單被當成真的訂單。\n\n按「確定」＝已經刪掉了，繼續下載；按「取消」＝先不下載。')) return;
+    state.chkPending = null; scheduleSave(); group();
+  }
   const miss = skuMissing();
   if(miss.length){
     alert(`要進 SG 的商品還有 ${miss.length} 個沒有 SKU，SG 會無法辨識：\n\n${miss.slice(0,10).join('\n')}${miss.length>10?'\n…':''}\n\n請到「SKU 對照」分頁填寫，或在欄位對應選擇「商品編號（SKU）」。`);
@@ -3130,7 +3148,7 @@ function bindWbTab(){
 }
 
 /* ================= 播種任務（Firestore seeding_tasks，手機播種頁讀取） =================
-   散單依 SG 出庫單的分檔切，每個檔再切成最多 50 單一輪；籃號＝這一輪的第幾單（A 面 1～25、B 面 26～50）。
+   散單依 SG 出庫單的分檔切，每個檔再切成最多 50 單一波；籃號＝這一波的第幾單（A 面 1～25、B 面 26～50）。
    只上傳播種與檢查需要的資料：單序、訂單編號、收件人姓名、電話末三碼、訂單備註、商品；不上傳地址與完整電話。 */
 const SEEDING_URL = 'https://jay77jay.github.io/seeding/seeding.html';
 let fb = null;
@@ -3147,7 +3165,7 @@ function seedRounds(){
   const nm = n => nameMap[n] || n;
   const files = splitShipFiles('', false, true), rounds = [];
   files.forEach(([, os, sh]) => { for(let i = 0; i < os.length; i += SEED_SLOTS){ const part = os.slice(i, i + SEED_SLOTS); part.sheet = sh || ''; rounds.push(part); } });
-  // 每個 SG 散單檔只含一家物流（多物流時依物流分檔），所以一輪也只有一家；ship 給播種頁顯示
+  // 每個 SG 散單檔只含一家物流（多物流時依物流分檔），所以一波也只有一家；ship 給播種頁顯示
   return rounds.map((os, ri) => ({no: ri + 1, seqFrom: os[0].seq, seqTo: os[os.length - 1].seq, sheet: os.sheet, ship: os[0].carrier || '',
     orders: os.map((o, i) => ({slot: i + 1, seq: o.seq, id: String(o.id), name: o.name || '', p3: last3(o.phone), note: o.note || '',
       items: [...o.names.map(n => ({name: nm(n), sku: skuOf(n) || '', qty: o.pItems.get(n)})),
@@ -3166,8 +3184,8 @@ async function seedShowForm(user){
   const rs = seedRounds(), n = rs.reduce((a, r) => a + r.orders.length, 0);
   $('#sdName').value = $('#sdName').value || `${state.projectName || '整單'}_${getTodayTW().replace(/-/g, '').slice(4)}`;
   const ships = [...new Set(rs.map(r => r.ship).filter(Boolean))];
-  $('#sdSum').textContent = `散單 ${fmt(n)} 單 → ${rs.length} 輪（每輪最多 ${SEED_SLOTS} 籃，依 SG 散單檔切）`
-    + (ships.length ? `；物流：${ships.map(s => `${s} ${rs.filter(r => r.ship === s).length} 輪`).join('、')}` : '；沒有對應「物流方式」欄，播種頁不顯示物流')
+  $('#sdSum').textContent = `散單 ${fmt(n)} 單 → ${rs.length} 波（每波最多 ${SEED_SLOTS} 籃，依 SG 散單檔切）`
+    + (ships.length ? `；物流：${ships.map(s => `${s} ${rs.filter(r => r.ship === s).length} 波`).join('、')}` : '；沒有對應「物流方式」欄，播種頁不顯示物流')
     + '。批次區照單序直接包，不進播種。';
   try{
     const snap = await fb.db.collection('hub_settings').doc('users').get();
@@ -3226,7 +3244,7 @@ $('#sdGo').addEventListener('click', async () => {
     await b.commit();
     const url = `${SEEDING_URL}?task=${ref.id}`;
     const wh = $('#sdWh').value;
-    $('#sdMsg').innerHTML = `✅ 已發布「${esc(name)}」：${rounds.length} 輪。手機開 <a href="${esc(url)}" target="_blank" rel="noopener">播種頁</a>，${wh ? `${esc(wh)}的同事登入後都看得到，點進去就加入` : '被指派的人登入後就會看到'}。`;
+    $('#sdMsg').innerHTML = `✅ 已發布「${esc(name)}」：${rounds.length} 波。手機開 <a href="${esc(url)}" target="_blank" rel="noopener">播種頁</a>，${wh ? `${esc(wh)}的同事登入後都看得到，點進去就加入` : '被指派的人登入後就會看到'}。`;
   }catch(e){ $('#sdMsg').textContent = '發布失敗：' + e.message; $('#sdGo').disabled = false; }
 });
 /* 待貨訂單原格式匯出：複製原始檔的儲存格（含型別與格式），只保留表頭列與待貨訂單的列 */
@@ -3316,13 +3334,8 @@ function syncScenesFromFeatures(){ SCENES.forEach(sc => { if(sc.on()) $(sc.box).
 function applyScenes(){
   // 已啟用的功能一定顯示，避免隱藏的設定還在默默作用
   SCENES.forEach(sc => { const d = document.querySelector(`details[data-fold="${sc.key}"]`); if(d) d.hidden = !($(sc.box).checked || sc.on()); });
-  let n = 0;
-  FOLD_ORDER.forEach(k => {
-    const d = document.querySelector(`details[data-fold="${k}"]`); if(!d) return;
-    const h = d.querySelector('summary h2');
-    if(!d.hidden) n++;
-    h.textContent = d.hidden ? h.dataset.title : `${n}. ${h.dataset.title}`;
-  });
+  // v1.32 區塊標題不加編號：編號會隨功能勾選重排，手冊無法引用，改用區塊名稱
+  FOLD_ORDER.forEach(k => { const d = document.querySelector(`details[data-fold="${k}"]`); if(d) d.querySelector('summary h2').textContent = d.querySelector('summary h2').dataset.title; });
 }
 SCENES.forEach(sc => $(sc.box).addEventListener('change', e => {
   if(!e.target.checked && sc.on()){
@@ -3344,23 +3357,26 @@ function updateSummaries(){
   }
   const ls = $('#looseSort'); 
   $('#thrNormal').hidden = keepOrder();
-  if(keepOrder()) setSum('thr', `不打亂原本排序（照原檔順序，全部散單）${($('#bagOn').checked || $('#regionOn').checked) ? '・包材分類／地址分區不套用' : ''}`);
-  else setSum('thr', `門檻 ${getThreshold()} 單・散單${ls.options[ls.selectedIndex].text.replace(/（.*）/, '')}${comboOn() ? '・拆組合' : ''}${$('#allocByTime').checked ? '・依下單時間分配' : ''}`);
-  setSum('bag', bagOn() ? `依袋型分批（${bagDefs.map(b => b.name).join('→')}）・依袋型分檔${state.bagStat && state.bagStat.orders[BAG_UNKNOWN] ? `・${state.bagStat.orders[BAG_UNKNOWN]} 單未估算` : ''}` : '未啟用', !!(bagOn() && state.bagStat && state.bagStat.orders[BAG_UNKNOWN]));
+  if(keepOrder()) setSum('thr', `不打亂原本排序（照原檔順序，全部散單）${$('#carrierSplit').checked ? '・依物流分段' : ''}${($('#bagOn').checked || $('#regionOn').checked) ? '・包材分類／地址分區不套用' : ''}`);
+  else setSum('thr', `門檻 ${getThreshold()} 單・散單${ls.options[ls.selectedIndex].text.replace(/（.*）/, '')}${comboOn() ? '・拆組合' : ''}${$('#allocByTime').checked ? '・依下單時間分配' : ''}${$('#carrierSplit').checked ? '・依物流分段' : ''}`);
+  const notYet = (box, what) => $(box).checked ? `尚未啟用：要套用請勾「${what}」` : '未啟用';
+  setSum('bag', bagOn() ? `依袋型分批（${bagDefs.map(b => b.name).join('→')}）・依袋型分檔${state.bagStat && state.bagStat.orders[BAG_UNKNOWN] ? `・${state.bagStat.orders[BAG_UNKNOWN]} 單未估算` : ''}` : notYet('#sceneBag', '依破壞袋大小先分類'), !!(bagOn() && state.bagStat && state.bagStat.orders[BAG_UNKNOWN]) || (!bagOn() && $('#sceneBag').checked));
   $('#boxOn').disabled = !bagOn(); $('#boxOn').closest('label').style.opacity = bagOn() ? '' : .5;
   if(boxOn()) $('#fsum-bag').textContent += `・分箱 每箱 ${getBoxSize()} 袋`;
-  setSum('region', regionOn() ? `${regionNames()[0]}（${regionCityList().join('、')}）／${regionNames()[1]}・${regionKeys().map(regionLabel).join('先')}後・${$('#regionOrder').selectedOptions[0].text}${$('#regionSplit').checked ? '・分開檔案' : ''}` : '未啟用');
+  setSum('region', regionOn() ? `${regionNames()[0]}（${regionCityList().join('、')}）／${regionNames()[1]}・${regionKeys().map(regionLabel).join('先')}後・${$('#regionOrder').selectedOptions[0].text}${$('#regionSplit').checked ? '・分開檔案' : ''}` : notYet('#sceneRegion', '依收件地址分成兩區'), !regionOn() && $('#sceneRegion').checked);
   $('#regionHint').textContent = `依地址開頭的縣市判斷（臺／台視為相同，郵遞區號會先略過）。批次代號加上區名第一個字（北A1、全A1）。目前單序順序：${regionOrderText()}。`
     + ($('#regionOrder').value === 'mixLoose' ? '散單兩區混在一起時，無法勾選「兩區分開檔案」（否則每個檔的單序會跳號）。' : '');
   setSum('ship', `${carrierLabel()}${carrier() === 'hct' ? `・寄件人 ${norm($('#sender').value) || '未填'}` : ''}・單序 ${getSeqStart()} 起・第 ${getRound()} 輪${state.seqLock ? '・已鎖定' : ''}`, carrier() === 'hct' && !norm($('#sender').value));
   setSum('split', `${$('#noSplit').checked ? '不分檔' : `每檔 ${getChunk()} 單`}・SG ${sgScopeLabel()}`);
-  setSum('gift', giftOn() ? `已啟用 ${activeRules().length} 個贈品` : '未啟用');
+  setSum('gift', giftOn() ? `已啟用 ${activeRules().length} 個贈品` : notYet('#sceneGift', '啟用贈品'), !giftOn() && $('#sceneGift').checked);
 }
 document.querySelector('aside').addEventListener('input', () => updateSummaries());
+document.addEventListener('click', e => { if(e.target && e.target.id === 'chkDone'){ state.chkPending = null; scheduleSave(); if(state.parsed) group(); } });
 document.querySelector('aside').addEventListener('change', () => updateSummaries());
 /* ================= 專案（IndexedDB，存在這台電腦的瀏覽器） ================= */
 const DB_NAME = 'ezfun-order-batcher', DB_STORE = 'projects', LS_CURRENT = 'ezfun-order-batcher-current';
-const PROJECT_SETTING_IDS = {...SETTING_IDS, seqStart:'value', round:'value'};
+// carrierSplit（依物流分段）只存在專案裡、不存進共用設定：同一個專案重新整理仍保留，換別家廠商的新專案從不勾開始（v1.32）
+const PROJECT_SETTING_IDS = {...SETTING_IDS, seqStart:'value', round:'value', carrierSplit:'checked'};
 const BACKUP_FORMAT = 'ezfun-order-batcher-project';
 let dbPromise = null;
 function db(){
@@ -3398,7 +3414,7 @@ function collectProject(){
   bagItemQty().forEach((q, n) => { if(itemSize[n]) size[n] = itemSize[n]; if(bagFit[n]) fit[n] = bagFit[n]; });
   return {id:state.projectId, name:state.projectName, createdAt:state.projectCreated || Date.now(), updatedAt:Date.now(),
     fileName:state.fileName, fileData:state.fileData, sheetName:state.sheetKey || state.sheetName, mapNames:mapNamesNow(),
-    settings, short:[...shortSet], avail:availMap, sku, sgname, price, combo:comboDefs, seqLock:state.seqLock || null, gifts:giftRules, bags:bagDefs, itemSize:size, bagFit:fit};
+    settings, chkPending:state.chkPending || null, short:[...shortSet], avail:availMap, sku, sgname, price, combo:comboDefs, seqLock:state.seqLock || null, gifts:giftRules, bags:bagDefs, itemSize:size, bagFit:fit};
 }
 let saveTimer = null;
 function scheduleSave(){ if(!state || !state.projectId || state.restoring) return; clearTimeout(saveTimer); saveTimer = setTimeout(saveProjectNow, 600); }
@@ -3433,10 +3449,12 @@ async function openProject(rec){
   try{
     state.projectId = rec.id; state.projectName = rec.name; state.projectCreated = rec.createdAt;
     state.fileName = rec.fileName; state.fileData = rec.fileData;
+    $('#carrierSplit').checked = false;   // v1.31 以前的專案沒有這個設定：一律從不勾開始，不沿用上一個專案的畫面狀態
     for(const [id, prop] of Object.entries(PROJECT_SETTING_IDS)) if(rec.settings && rec.settings[id] !== undefined) $('#'+id)[prop] = rec.settings[id];
     shortSet = new Set(rec.short || []);
     availMap = rec.avail || {}; try{ localStorage.setItem(LS_AVAIL, JSON.stringify(availMap)); }catch(e){}
     state.seqLock = rec.seqLock || null;
+    state.chkPending = rec.chkPending || null;
     $('#sgChunk').disabled = $('#noSplit').checked;
     syncScenesFromFeatures();
     applyCarrierUI();
