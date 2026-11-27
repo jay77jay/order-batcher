@@ -674,6 +674,7 @@ function renderGiftRules(){
 
 /* ★★★ 版本：每次改版在最上面加一筆（版本號、日期、內容） ★★★ */
 const CHANGELOG = [
+  ['1.33', '2026-11-27', '託運單修正（暮雨 11/27 缺件補出）：① 換訂單檔（新專案）或開別的專案時，自動清掉上一批的託運單，不會再把上一批的託運單拿去 OCR。② 訂單檔只有 1、2 張訂單、託運單整份上傳時，原本寄件人帳號、公司代碼這類每張託運單都有的編號會被當成「只屬於這張訂單」，整批託運單全配給它（輸出全部都是 #1）；現在出現在 3 張以上託運單的編號不拿來認訂單。③ 每張訂單都已經有託運單時，比不到的託運單是別批的：不跑 OCR，收合在「不屬於這批訂單」裡、不會輸出。④ OCR 只畫那一張託運單的範圍（不再整頁放大），只跟還沒有託運單的訂單比對（候選少、比較不會配錯），分頁標題顯示進度。⑤ 人工指定的下拉選單上面加搜尋框：可打單序、姓名、電話末幾碼、訂單編號，多個關鍵字用空白隔開，找不到時字依序出現也算（打「王明」找得到「王小明」），按 Enter 直接選第一筆。⑥ 物流方式欄是 0 或純數字時不當成物流名稱（託運單分組改用託運單上認出的物流）。'],
   ['1.32', '2026-11-26', '依新人審閱建議改：箱號改成「A箱01」，不再跟批次代號 A1 同名。物流上傳檔與 SG 出庫單的檔名開頭加全域序號（依單序、批次與散單共用、補零），檔案總管排序＝單序順序，有袋型、區名、物流時也不會亂。「依物流分段」改成跟著專案儲存（重新整理仍保留；新專案、舊專案一律從不勾開始，不會帶到別家廠商）。散單播種的單位改叫「波」（一個 SG 散單檔＝一波），「輪次」只用在分批到貨。左側區塊標題拿掉編號。功能已勾但區塊內還沒啟用時，區塊摘要會提示。用本機檔案開啟時，「發布播種任務」下方直接提示改用線上版。下載缺件檢查單後提醒區會一直提醒到 SG 刪掉檢查單，下載 SG 出庫單前也會再確認。散單相關說明改為用手機播種配貨。'],
   ['1.31', '2026-11-26', '新增「依物流分段」勾選框（批次門檻區，預設不勾）：原本只要物流方式欄有兩家以上物流就強制分段，現在要勾了才分；不勾時全部一起排單序、出一份檔，每張單的 SG 配送方式照樣依物流方式欄填，託運單分頁仍依實際物流分組與檢查缺單。訂單有多家物流但沒勾時，提醒區會說明。'],
   ['1.30', '2026-11-26', '系統主標題改為「神逝虛空」，「同品項訂單批次整理」改為副標題。'],
@@ -757,7 +758,7 @@ const keepOrder = () => $('#keepOrder').checked;
 const SEED_SLOTS = 50;   // 播種層架格數（A 面 25＋B 面 25），一波最多幾籃
 /* 物流方式欄的值歸成物流名稱（7-11超商取貨 → 7-11）；認不出來的保留原文；沒對應欄位時一律 '' */
 function shipGroup(v){
-  const s = norm(v || ''); if(!s) return '';
+  const s = norm(v || ''); if(!s || !/[^\d\s.\-]/.test(s)) return '';   // 空白、0、純數字不是物流名稱
   const R = [[/7-?11|7-?eleven|統一超商|交貨便/i, '7-11'], [/全家|fami/i, '全家'], [/萊爾富|hi-?life/i, '萊爾富'], [/OK/i, 'OK'],
     [/宅配通/, '宅配通'], [/新竹|hct/i, '新竹'], [/黑貓|宅急便|t-?cat/i, '黑貓'], [/順豐|sf/i, '順豐'], [/郵局|郵政/, '郵局']];
   const hit = R.find(([re]) => re.test(s));
@@ -937,6 +938,7 @@ async function loadFile(file, replace = false){
     shortSet = new Set();   // 新專案從沒有暫缺開始
     availMap = {}; saveAvail();
     state.seqLock = null;   // 新專案沒有鎖定
+    wbReset();   // 上一批的託運單不帶到新專案
     $('#carrierSplit').checked = false;   // 依物流分段不帶到新專案（別家廠商）
     state.chkPending = null;
   }
@@ -2656,6 +2658,8 @@ $('#dlSg').addEventListener('click', async () => {
    → 依物流分組、依單序排列，待貨訂單的託運單拿掉 → 每家物流一份 PDF，右上角蓋 #單序。
    一頁多張的版型輸出時照原本的格子位置重排（宅配通用印表機放原本的標籤紙印）。PDF 只在這個頁面處理，不上傳、不存檔。 */
 const wbState = {files: [], labels: [], extraLookup: new Map(), extraNames: [], busy: false, log: [], view: null, lkCache: null};
+// 清掉託運單與對照表（換訂單檔、開別的專案時也要清：上一批的託運單留著，會在新訂單裡全部「比不到」又被送去 OCR）
+function wbReset(){ if(wbState.busy) return; Object.assign(wbState, {files: [], labels: [], extraLookup: new Map(), extraNames: [], log: [], view: null, lkCache: null, rowTokCache: null}); }
 const wbCode = s => String(s ?? '').normalize('NFKC').replace(/^="?|"$/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const WB_CODE_HEAD = /出貨單編號|出貨編號|託運單號|交貨便服務代碼|服務代碼|貨運單號|追蹤號碼|物流單號|配送單號|查貨號碼|寄件編號/;
 // 對照表：表頭有「訂單編號」和託運單號類欄位的工作表，每列 託運單號 → 訂單編號（新竹 Summary 的「訂單號碼」是單序，不算）
@@ -2942,24 +2946,28 @@ async function wbOcrPass(prog){
   const R = wbResolve(); if(!R) return;
   const todo = R.bad.filter(i => !wbState.labels[i].ocrDone);
   if(!todo.length) return;
-  const worker = await wbOcrWorker(), docs = new Map();
+  if(!R.missing.length){ wbState.log.push(`每張訂單都有託運單了，${todo.length} 張比不到的不是這批的，略過 OCR`); return; }
+  const worker = await wbOcrWorker(), docs = new Map(), title0 = document.title;
   let hit = 0;
+  try{
   for(let k = 0; k < todo.length; k++){
     const lb = wbState.labels[todo[k]]; lb.ocrDone = true;
-    prog(`OCR 讀圖片上的字：${k + 1}/${todo.length}`);
+    // 瀏覽器會把背景分頁的運算降速（省電），切走時進度會停；分頁標題顯示進度，切走也看得到
+    prog(`OCR 讀圖片上的字：${k + 1}/${todo.length}（請停在這個分頁，切到別的分頁瀏覽器會降速）`);
+    document.title = `OCR ${k + 1}/${todo.length}・${title0}`;
     if(!docs.has(lb.fi)) docs.set(lb.fi, await pdfjsLib.getDocument({data: wbState.files[lb.fi].bytes.slice()}).promise);
+    // 只畫這一張託運單的範圍（300 DPI）：一頁多張的不用整頁放大，快好幾倍
     const page = await docs.get(lb.fi).getPage(lb.page), sc = 300 / 72, H = page.getViewport({scale: 1}).height, b = lb.box;
-    const vp = page.getViewport({scale: sc}), full = document.createElement('canvas');
-    full.width = Math.ceil(vp.width); full.height = Math.ceil(vp.height);
-    const fc = full.getContext('2d'); fc.fillStyle = '#fff'; fc.fillRect(0, 0, full.width, full.height);
-    await page.render({canvasContext: fc, viewport: vp}).promise;
     const cv = document.createElement('canvas'); cv.width = Math.round((b.x1 - b.x0) * sc); cv.height = Math.round((b.y1 - b.y0) * sc);
-    cv.getContext('2d').drawImage(full, b.x0 * sc, (H - b.y1) * sc, cv.width, cv.height, 0, 0, cv.width, cv.height);
+    const vp = page.getViewport({scale: sc, offsetX: -b.x0 * sc, offsetY: -(H - b.y1) * sc});
+    const c = cv.getContext('2d'); c.fillStyle = '#fff'; c.fillRect(0, 0, cv.width, cv.height);
+    await page.render({canvasContext: c, viewport: vp}).promise;
     const {data} = await worker.recognize(cv);
     lb.ocrText = (data.text || '').normalize('NFKC').toUpperCase();
     lb.ocrToks = [...new Set((lb.ocrText.match(/[A-Z0-9]{6,}/g) || []))];
-    full.width = full.height = 0;
+    cv.width = cv.height = 0;
   }
+  }finally{ document.title = title0; }
   const R2 = wbResolve();
   todo.forEach(i => { if(R2.res[i].o && /OCR/.test(R2.res[i].how)) hit++; });
   wbState.log.push(`OCR：${todo.length} 張比不到的託運單讀圖片上的字，對上 ${hit} 張`);
@@ -3003,13 +3011,17 @@ function wbResolve(){
   const idRes = [...ids.entries()].filter(([k]) => k.length >= (/^\d+$/.test(k) ? 5 : 4))
     .map(([k, o]) => [o, new RegExp((/^\d/.test(k) ? '(?<!\\d)' : '(?<![A-Z0-9])') + k + (/\d$/.test(k) ? '(?!\\d)' : '(?![A-Z0-9])'))]);
   const rowTok = wbRowTokens(r);
-  // OCR 比對用：訂單編號（6 碼以上）、電話後 9 碼、對照表的託運單號（8 碼以上）
-  let ocrKeys = null;
+  // 每個編號出現在幾張託運單上：寄件人帳號、公司代碼、日期這類每張都印的編號不能拿來認訂單
+  // （訂單檔只剩 1 張時，這些編號在訂單檔裡「只屬於這一張」，v1.32 以前整批託運單都會被配給它，暮雨 11/27 缺件補出實測 22 張全配成 #1）
+  const labTokN = new Map();
+  wbState.labels.forEach(lb => lb.tokens.forEach(t => labTokN.set(t, (labTokN.get(t) || 0) + 1)));
+  // OCR 比對用：訂單編號（6 碼以上）、電話後 9 碼、對照表的託運單號（8 碼以上）；只比「還沒有託運單」的訂單（taken 在第一輪比對後才知道）
+  let ocrKeys = null, taken = new Set();
   const ocrKeysOf = () => ocrKeys || (ocrKeys = [
     ...[...ids].filter(([k]) => k.length >= 6),
     ...[...r.orders.values()].filter(o => o.phone && o.phone.length >= 9).map(o => [o.phone.slice(-9), o]),
-    ...[...lk.map].filter(([k]) => k.length >= 8).map(([k, v]) => [k, ids.get(wbCode(v))]).filter(([, o]) => o)]);
-  const res = wbState.labels.map(lb => {
+    ...[...lk.map].filter(([k]) => k.length >= 8).map(([k, v]) => [k, ids.get(wbCode(v))]).filter(([, o]) => o)].filter(([, o]) => !taken.has(o.id)));
+  const one = (lb, useOcr) => {
     if(lb.manual) return {o: r.orders.get(lb.manual) || null, how: '人工指定', cands: []};
     const hits = new Map(), add = (o, how) => { if(o && !hits.has(o.id)) hits.set(o.id, {o, how}); };
     lb.tokens.forEach(t => { add(ids.get(t), lb.codes.length ? '條碼' : '訂單編號'); const v = lk.map.get(t); if(v) add(ids.get(wbCode(v)), lb.codes.length ? '條碼＋對照表' : '對照表'); });
@@ -3020,10 +3032,10 @@ function wbResolve(){
       lk.map.forEach((v, k) => { if(k.length >= 8 && j.includes(k)) add(ids.get(wbCode(v)), '條碼＋對照表'); });
     }
     // 訂單檔同一列其他欄位裡的編號（例如 7-11 代碼放在地址欄、CVS 出貨編號、備註裡的平台單號），只用只屬於一張訂單的編號
-    if(!hits.size) lb.tokens.forEach(t => add(rowTok.get(t), '訂單檔資料'));
+    if(!hits.size) lb.tokens.forEach(t => { if((labTokN.get(t) || 0) <= 2) add(rowTok.get(t), '訂單檔資料'); });
     // 新竹右上角的 #N：只有這個專案下載過新竹上傳檔（單序已鎖定）時才確定是這次的單序；
     // 否則可能是廠商自己或舊流程的編號（暮雨 11/24 實測 4 張全部對錯），交給人工確認
-    if(!hits.size && lb.ocrToks && lb.ocrToks.length) wbOcrMatch(lb.ocrToks, ocrKeysOf()).forEach(o => add(o, 'OCR'));
+    if(useOcr && !hits.size && lb.ocrToks && lb.ocrToks.length) wbOcrMatch(lb.ocrToks, ocrKeysOf()).forEach(o => add(o, 'OCR'));
     if(!hits.size && lb.seqMark != null){
       const o = bySeq.get(lb.seqMark);
       if(state.seqLock) add(o, `單序 #${lb.seqMark}`);
@@ -3031,7 +3043,11 @@ function wbResolve(){
     }
     const hs = [...hits.values()];
     return hs.length === 1 ? {o: hs[0].o, how: hs[0].how, cands: []} : {o: null, how: hs.length ? '對到多張訂單' : '找不到訂單', cands: hs.map(h => h.o)};
-  });
+  };
+  // 第一輪不用 OCR；比不到的再用 OCR，只跟還沒有託運單的訂單比（候選少、比較不會配錯）
+  let res = wbState.labels.map(lb => one(lb, false));
+  taken = new Set(res.filter(m => m.o).map(m => m.o.id));
+  res = res.map((m, i) => { const lb = wbState.labels[i]; return !m.o && !lb.manual && lb.ocrToks && lb.ocrToks.length ? one(lb, true) : m; });
   const groups = new Map(), heldL = [], bad = [], used = new Map();
   res.forEach((m, i) => {
     const lb = wbState.labels[i];
@@ -3068,15 +3084,22 @@ function wbPanel(){
   const thumb = i => `<img src="${L[i].thumb}" alt="" style="max-width:160px;max-height:160px;border:1px solid #ccc;display:block">`;
   const where = i => `${esc(wbState.files[L[i].fi].name)} 第 ${L[i].page} 頁`;
   // 要人工指定的＋已經人工指定過的（可以改）
-  const fix = [...R.bad, ...L.map((l, i) => l.manual ? i : -1).filter(i => i >= 0)];
-  if(fix.length){
+  // 每張訂單都有託運單時，比不到的是別批的（例如缺件補出只上傳一張訂單、託運單整份上傳）：收合起來，不用逐張指定
+  const extra = R.missing.length ? [] : R.bad;
+  const fix = [...(R.missing.length ? R.bad : []), ...L.map((l, i) => l.manual ? i : -1).filter(i => i >= 0)];
+  const nBad = R.bad.length - extra.length;
+  if(fix.length || extra.length){
     const opts = [...state.result.orders.values()].sort((a, b) => (a.seq ?? 1e9) - (b.seq ?? 1e9));
     wbState.view.opts = opts;
-    h += `<h3 style="margin:16px 0 6px;font-size:15px;color:var(--warn)">要人工指定（${R.bad.length} 張${fix.length > R.bad.length ? `，已指定 ${fix.length - R.bad.length} 張` : ''}）</h3><p class="hint">看縮圖上的收件人，選對應的訂單；沒指定的不會輸出。選錯可以改回「（不輸出）」。</p>
-      <div style="display:flex;flex-wrap:wrap;gap:10px">${fix.map(i => `<div style="border:1px solid ${L[i].manual ? 'var(--ok,#2f7d4f)' : 'var(--warn)'};border-radius:8px;padding:8px;width:200px">${thumb(i)}
+    const card = i => `<div style="border:1px solid ${L[i].manual ? 'var(--ok,#2f7d4f)' : 'var(--warn)'};border-radius:8px;padding:8px;width:200px">${thumb(i)}
         <div class="hint">${where(i)}・${esc(L[i].manual ? '人工指定' : R.res[i].how)}${L[i].carrier ? '・' + esc(L[i].carrier) : ''}</div>
         ${R.res[i].cands.length ? `<div class="hint">候選：${R.res[i].cands.map(o => esc(`${o.seq ?? '待貨'} ${o.name}`)).join('、')}${/^右上角/.test(R.res[i].how) ? '<br><b style="color:var(--warn)">請先核對縮圖上的收件人，不同就不是這張</b>' : ''}</div>` : ''}
-        <select data-wbi="${i}" style="width:100%"><option value="">（不輸出）</option>${opts.map((o, k) => `<option value="${k}" ${L[i].manual === o.id ? 'selected' : ''}>${esc(`${o.seq ?? '待貨'}・${o.name}・${o.id}`)}</option>`).join('')}</select></div>`).join('')}</div>`;
+        <input type="search" data-wbq="${i}" placeholder="搜尋：單序／姓名／電話／編號" autocomplete="off" style="width:100%;margin-bottom:4px;box-sizing:border-box">
+        <select data-wbi="${i}" style="width:100%"><option value="">（不輸出）</option>${opts.map((o, k) => `<option value="${k}" ${L[i].manual === o.id ? 'selected' : ''}>${esc(wbOptText(o))}</option>`).join('')}</select></div>`;
+    if(fix.length) h += `<h3 style="margin:16px 0 6px;font-size:15px;color:var(--warn)">要人工指定（${nBad} 張${fix.length > nBad ? `，已指定 ${fix.length - nBad} 張` : ''}）</h3><p class="hint">看縮圖上的收件人，選對應的訂單；沒指定的不會輸出。選錯可以改回「（不輸出）」。搜尋框可打單序、姓名、電話末幾碼或訂單編號，按 Enter 直接選第一筆。</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">${fix.map(card).join('')}</div>`;
+    if(extra.length) h += `<details style="margin:16px 0 6px"><summary class="hint">另外 ${extra.length} 張託運單不屬於這批訂單（每張訂單都已經有託運單），不會輸出；要指定的話展開</summary>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px">${extra.map(card).join('')}</div></details>`;
   }
   if(R.heldL.length) h += `<h3 style="margin:16px 0 6px;font-size:15px">待貨訂單的託運單：已拿掉，不會輸出（${R.heldL.length} 張）</h3><p class="hint">這些訂單這次不出，託運單請另外收好，到貨後再出。</p>
     ${simpleTable([['訂單編號','收件人','缺的商品','託運單位置'], ...R.heldL.map(i => [O(i).id, O(i).name, (O(i).missing || []).map(n => nameMap[n] || n).join('、'), `${wbState.files[L[i].fi].name} 第 ${L[i].page} 頁`])])}`;
@@ -3086,6 +3109,22 @@ function wbPanel(){
   h += `<details style="margin-top:12px"><summary>全部託運單（${L.length} 張）</summary>${simpleTable([['單序','訂單編號','收件人','物流','比對方式','位置'],
     ...L.map((lb, i) => { const m = R.res[i]; return [m.o ? (m.o.seq ?? '待貨') : '', m.o ? m.o.id : '', m.o ? m.o.name : '', m.o ? (m.o.shipName || lb.carrier) : lb.carrier, m.how, `${wbState.files[lb.fi].name} 第 ${lb.page} 頁`]; })])}</details>`;
   return h;
+}
+// 人工指定的選項文字與搜尋：單序、姓名、訂單編號、電話；每個關鍵字都要出現（不分大小寫、忽略空白和 -）；
+// 都找不到時退一步，字依序出現就算（例如打「王明」找得到「王小明」）
+const wbOptText = o => `${o.seq ?? '待貨'}・${o.name}・${o.id}${o.phone ? '・' + String(o.phone).slice(-3) : ''}`;
+function wbSearch(opts, q){
+  const nz = s => String(s ?? '').normalize('NFKC').toLowerCase().replace(/[\s\-_]/g, '');
+  const terms = String(q).normalize('NFKC').toLowerCase().split(/\s+/).map(nz).filter(Boolean);
+  const all = opts.map((o, k) => k);
+  if(!terms.length) return all;
+  const hay = opts.map(o => nz([o.seq, o.name, o.id, o.phone, o.shipName].join('|')));
+  const exact = all.filter(k => terms.every(t => hay[k].includes(t)));
+  // 單序完全相符的排最前面（打「12」先出單序 12，不是 112、120）
+  const seqHit = k => terms.some(t => String(opts[k].seq) === t) ? 0 : 1;
+  if(exact.length) return exact.sort((a, b) => seqHit(a) - seqHit(b));
+  const sub = (h, t) => { let p = 0; for(const c of t){ p = h.indexOf(c, p); if(p < 0) return false; p++; } return true; };
+  return all.filter(k => terms.every(t => sub(hay[k], t)));
 }
 function wbRefresh(){
   const p = document.querySelector('#panel-wb .tablewrap');
@@ -3138,8 +3177,19 @@ function bindWbTab(){
   pick.addEventListener('click', () => file.click());
   file.addEventListener('change', () => { const fs = [...file.files]; file.value = ''; if(fs.length) wbAddFiles(fs); });
   const clr = document.getElementById('wbClear');
-  if(clr) clr.addEventListener('click', () => { if(!confirm('清除已上傳的託運單與對照表？')) return; Object.assign(wbState, {files: [], labels: [], extraLookup: new Map(), extraNames: [], log: [], lkCache: null}); wbRefresh(); });
+  if(clr) clr.addEventListener('click', () => { if(!confirm('清除已上傳的託運單與對照表？')) return; wbReset(); wbRefresh(); });
   document.querySelectorAll('[data-wbdl]').forEach(b => b.addEventListener('click', () => wbDownload(Number(b.dataset.wbdl), b)));
+  document.querySelectorAll('input[data-wbq]').forEach(q => {
+    const sel = document.querySelector(`select[data-wbi="${q.dataset.wbq}"]`); if(!sel) return;
+    const opts = wbState.view.opts, cur = sel.value;
+    const pick = k => { sel.value = String(k); sel.dispatchEvent(new Event('change')); };
+    q.addEventListener('input', () => {
+      const ks = wbSearch(opts, q.value);
+      sel.innerHTML = `<option value="">${q.value.trim() ? `（不輸出）— 找到 ${ks.length} 筆` : '（不輸出）'}</option>` + ks.map(k => `<option value="${k}" ${String(k) === cur ? 'selected' : ''}>${esc(wbOptText(opts[k]))}</option>`).join('');
+      sel.size = q.value.trim() && ks.length ? Math.min(6, ks.length + 1) : 0;   // 電腦上直接展開清單；手機點下去就是篩過的選單
+    });
+    q.addEventListener('keydown', e => { if(e.key !== 'Enter') return; e.preventDefault(); const ks = wbSearch(opts, q.value); if(ks.length) pick(ks[0]); });
+  });
   document.querySelectorAll('select[data-wbi]').forEach(s => s.addEventListener('change', () => {
     const o = s.value === '' ? null : wbState.view.opts[Number(s.value)];
     wbState.labels[Number(s.dataset.wbi)].manual = o ? o.id : '';
@@ -3447,6 +3497,7 @@ async function refreshProjectList(){
 async function openProject(rec){
   state.restoring = true;
   try{
+    if(state.projectId !== rec.id) wbReset();
     state.projectId = rec.id; state.projectName = rec.name; state.projectCreated = rec.createdAt;
     state.fileName = rec.fileName; state.fileData = rec.fileData;
     $('#carrierSplit').checked = false;   // v1.31 以前的專案沒有這個設定：一律從不勾開始，不沿用上一個專案的畫面狀態
