@@ -674,6 +674,7 @@ function renderGiftRules(){
 
 /* ★★★ 版本：每次改版在最上面加一筆（版本號、日期、內容） ★★★ */
 const CHANGELOG = [
+  ['1.34', '2026-11-27', '託運單：超商單（7-11、全家）沒上傳對照表時，改用託運單上的「取件人」比對（遮罩姓名「林*茹」＝第一個字和最後一個字），只跟還沒有託運單、物流不衝突的訂單比，只對到一張才自動配，同名多張列為候選交給人工（暮雨 11/27 超取分頁沒有店號、電話，沒上傳 711單號 csv 時 14 張全部比不到，現在 14 張全對上、與 csv 結果相同）。新增防呆：對照表配到的訂單姓名和託運單上的取件人不符時，不自動輸出、交給人工確認（暮雨 11/25 廠商的 711單號 csv 把同一家門市的兩張對調，照 csv 輸出會包錯貨）。'],
   ['1.33', '2026-11-27', '託運單修正（暮雨 11/27 缺件補出）：① 換訂單檔（新專案）或開別的專案時，自動清掉上一批的託運單，不會再把上一批的託運單拿去 OCR。② 訂單檔只有 1、2 張訂單、託運單整份上傳時，原本寄件人帳號、公司代碼這類每張託運單都有的編號會被當成「只屬於這張訂單」，整批託運單全配給它（輸出全部都是 #1）；現在出現在 3 張以上託運單的編號不拿來認訂單。③ 每張訂單都已經有託運單時，比不到的託運單是別批的：不跑 OCR，收合在「不屬於這批訂單」裡、不會輸出。④ OCR 只畫那一張託運單的範圍（不再整頁放大），只跟還沒有託運單的訂單比對（候選少、比較不會配錯），分頁標題顯示進度。⑤ 人工指定的下拉選單上面加搜尋框：可打單序、姓名、電話末幾碼、訂單編號，多個關鍵字用空白隔開，找不到時字依序出現也算（打「王明」找得到「王小明」），按 Enter 直接選第一筆。⑥ 物流方式欄是 0 或純數字時不當成物流名稱（託運單分組改用託運單上認出的物流）。'],
   ['1.32', '2026-11-26', '依新人審閱建議改：箱號改成「A箱01」，不再跟批次代號 A1 同名。物流上傳檔與 SG 出庫單的檔名開頭加全域序號（依單序、批次與散單共用、補零），檔案總管排序＝單序順序，有袋型、區名、物流時也不會亂。「依物流分段」改成跟著專案儲存（重新整理仍保留；新專案、舊專案一律從不勾開始，不會帶到別家廠商）。散單播種的單位改叫「波」（一個 SG 散單檔＝一波），「輪次」只用在分批到貨。左側區塊標題拿掉編號。功能已勾但區塊內還沒啟用時，區塊摘要會提示。用本機檔案開啟時，「發布播種任務」下方直接提示改用線上版。下載缺件檢查單後提醒區會一直提醒到 SG 刪掉檢查單，下載 SG 出庫單前也會再確認。散單相關說明改為用手機播種配貨。'],
   ['1.31', '2026-11-26', '新增「依物流分段」勾選框（批次門檻區，預設不勾）：原本只要物流方式欄有兩家以上物流就強制分段，現在要勾了才分；不勾時全部一起排單序、出一份檔，每張單的 SG 配送方式照樣依物流方式欄填，託運單分頁仍依實際物流分組與檢查缺單。訂單有多家物流但沒勾時，提醒區會說明。'],
@@ -2836,6 +2837,22 @@ function wbBarcodeBands(ctx, W, H){
   }
   return bands.slice(0, 6);
 }
+// 託運單上的取件人／收件人姓名（超商單多半遮成「林*茹」「黃*」）；認不出來回傳 ''
+function wbPickName(text){
+  const m = String(text).normalize('NFKC').match(/(?:取件人|取貨人|收件人)\s*[:：]\s*(\S+)/);
+  if(!m) return '';
+  const s = m[1].replace(/[○〇Ｏ●＊]/g, '*');
+  return /^[^*\s\d]\*+[^*\s\d]{0,2}$/.test(s) || /^[\u4e00-\u9fff]{2,4}$/.test(s) ? s : '';
+}
+// 姓名比對：遮罩的「林*茹」＝第一個字是林、最後一個字是茹（長度至少一樣）；沒遮罩的要完全相同
+function wbNameFits(pick, name){
+  const n = String(name || '').normalize('NFKC').replace(/\s/g, ''); if(!n) return false;
+  const m = pick.match(/^([^*]+)(\*+)(.*)$/);
+  if(!m) return n === pick;
+  return n.length >= m[1].length + m[3].length + 1 && n.startsWith(m[1]) && n.endsWith(m[3]);
+}
+// 寬鬆版（只用在防呆）：託運單上露出來的字都出現在訂單姓名裡就算相符（有的超商單把姓放最後，例如「瑄*胡」＝胡瑄芸）
+function wbNameLoose(pick, name){ const n = String(name || '').normalize('NFKC'); return [...pick.replace(/\*/g, '')].every(c => n.includes(c)); }
 function wbTokens(text){ return [...new Set((String(text).normalize('NFKC').toUpperCase().match(/[A-Z0-9][A-Z0-9\-]{4,}/g) || []).map(wbCode).filter(t => t.length >= 6))]; }
 async function wbAddFiles(list){
   if(typeof pdfjsLib === 'undefined' || typeof PDFLib === 'undefined'){ alert('PDF 元件沒有載入（可能是網路問題），請重新整理頁面後再試。'); return; }
@@ -2904,7 +2921,7 @@ async function wbAddFiles(list){
           const lb = {fi, page: p, grid: rg.grid, tplCell: !!rg.tpl, box: {x0: rg.x0, y0: rg.y0, x1: rg.x1, y1: rg.y1}, carrier: wbCarrierOfText(text + ' ' + f.name),
             tokens: [...new Set([...wbTokens(text), ...codes.flatMap(wbTokens)])], codes: codes.map(wbCode), seqMark: smi ? Number(smi.s.replace(/\D/g, '')) : null,
             hay: (text + ' | ' + codes.join(' | ')).normalize('NFKC').toUpperCase().replace(/[-_]/g, ''),
-            text: text.slice(0, 200), thumb: th.toDataURL('image/jpeg', 0.7), manual: ''};
+            text: text.slice(0, 200), thumb: th.toDataURL('image/jpeg', 0.7), manual: '', pick: wbPickName(text)};
           fileLabels.push(lb); wbState.labels.push(lb);
         }
       }
@@ -3046,8 +3063,27 @@ function wbResolve(){
   };
   // 第一輪不用 OCR；比不到的再用 OCR，只跟還沒有託運單的訂單比（候選少、比較不會配錯）
   let res = wbState.labels.map(lb => one(lb, false));
+  // 防呆：超商單上的取件人（遮罩姓名）跟對照表、訂單檔資料配到的訂單姓名不符 → 不自動輸出，交給人工
+  // （暮雨 11/25 廠商的 711單號 csv 把同一家門市的兩張對調了，照 csv 輸出會包錯貨）
+  res = res.map((m, i) => {
+    const lb = wbState.labels[i];
+    if(!m.o || lb.manual || !lb.pick || !/\*/.test(lb.pick) || !/對照表|訂單檔資料/.test(m.how) || wbNameLoose(lb.pick, m.o.name)) return m;
+    const fit = [...r.orders.values()].filter(o => wbNameFits(lb.pick, o.name));
+    return {o: null, how: `${m.how}配到 ${m.o.name}，但託運單上的取件人是 ${lb.pick}，請確認`, cands: [m.o, ...fit.filter(o => o !== m.o)].slice(0, 6), conflict: true};
+  });
   taken = new Set(res.filter(m => m.o).map(m => m.o.id));
-  res = res.map((m, i) => { const lb = wbState.labels[i]; return !m.o && !lb.manual && lb.ocrToks && lb.ocrToks.length ? one(lb, true) : m; });
+  // 取件人姓名：7-11、全家的託運單上沒有訂單編號、對照表又沒上傳時（暮雨 11/27 超取分頁沒有店號、電話）；
+  // 只跟還沒有託運單、物流不衝突的訂單比，只對到一張才算，對到多張列為候選交給人工
+  const homeShip = s => /宅配|宅急便|黑貓|新竹|郵局|順豐/.test(s || ''), cvs = c => /7-11|全家|萊爾富|OK/.test(c || '');
+  const free = [...r.orders.values()].filter(o => !taken.has(o.id));
+  res = res.map((m, i) => {
+    const lb = wbState.labels[i];
+    if(m.o || lb.manual || !lb.pick || m.conflict) return m;
+    const cs = free.filter(o => wbNameFits(lb.pick, o.name) && !(cvs(lb.carrier) && homeShip(o.shipName)) && !(o.shipName && cvs(o.shipName) && lb.carrier && o.shipName !== lb.carrier));
+    if(cs.length === 1) return {o: cs[0], how: '取件人姓名', cands: []};
+    return cs.length ? {o: null, how: `取件人 ${lb.pick} 對到 ${cs.length} 張訂單`, cands: cs} : m;
+  });
+  res = res.map((m, i) => { const lb = wbState.labels[i]; if(m.o || m.conflict || lb.manual || !lb.ocrToks || !lb.ocrToks.length) return m; const x = one(lb, true); return x.o ? x : (m.cands.length ? m : x); });
   const groups = new Map(), heldL = [], bad = [], used = new Map();
   res.forEach((m, i) => {
     const lb = wbState.labels[i];
@@ -3093,7 +3129,7 @@ function wbPanel(){
     wbState.view.opts = opts;
     const card = i => `<div style="border:1px solid ${L[i].manual ? 'var(--ok,#2f7d4f)' : 'var(--warn)'};border-radius:8px;padding:8px;width:200px">${thumb(i)}
         <div class="hint">${where(i)}・${esc(L[i].manual ? '人工指定' : R.res[i].how)}${L[i].carrier ? '・' + esc(L[i].carrier) : ''}</div>
-        ${R.res[i].cands.length ? `<div class="hint">候選：${R.res[i].cands.map(o => esc(`${o.seq ?? '待貨'} ${o.name}`)).join('、')}${/^右上角/.test(R.res[i].how) ? '<br><b style="color:var(--warn)">請先核對縮圖上的收件人，不同就不是這張</b>' : ''}</div>` : ''}
+        ${R.res[i].cands.length ? `<div class="hint">候選：${R.res[i].cands.map(o => esc(`${o.seq ?? '待貨'} ${o.name}`)).join('、')}${/^右上角/.test(R.res[i].how) || R.res[i].conflict ? '<br><b style="color:var(--warn)">請先核對縮圖上的收件人，不同就不是這張</b>' : ''}</div>` : ''}
         <input type="search" data-wbq="${i}" placeholder="搜尋：單序／姓名／電話／編號" autocomplete="off" style="width:100%;margin-bottom:4px;box-sizing:border-box">
         <select data-wbi="${i}" style="width:100%"><option value="">（不輸出）</option>${opts.map((o, k) => `<option value="${k}" ${L[i].manual === o.id ? 'selected' : ''}>${esc(wbOptText(o))}</option>`).join('')}</select></div>`;
     if(fix.length) h += `<h3 style="margin:16px 0 6px;font-size:15px;color:var(--warn)">要人工指定（${nBad} 張${fix.length > nBad ? `，已指定 ${fix.length - nBad} 張` : ''}）</h3><p class="hint">看縮圖上的收件人，選對應的訂單；沒指定的不會輸出。選錯可以改回「（不輸出）」。搜尋框可打單序、姓名、電話末幾碼或訂單編號，按 Enter 直接選第一筆。</p>
