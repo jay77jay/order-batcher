@@ -33,6 +33,11 @@ button,select,input{font:inherit;color:inherit}
 header{background:var(--ink);color:#fff;padding:14px 24px;border-bottom:6px solid transparent;
   border-image:repeating-linear-gradient(-45deg,var(--tape) 0 14px,var(--ink) 14px 28px) 6}
 header h1{margin:0;font-size:24px;font-weight:900;letter-spacing:.12em;line-height:1.2}
+/* 彩蛋：標題停留 5 秒 */
+#appTitle{position:relative;display:inline-block}
+#appEgg{position:absolute;left:100%;top:50%;margin-left:12px;transform:translateY(-50%) scale(.9);white-space:nowrap;font-size:14px;font-weight:700;letter-spacing:.05em;
+  background:#f5c518;color:#1a1a1a;border-radius:6px;padding:4px 10px;box-shadow:0 2px 8px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .4s,transform .4s;z-index:10}
+#appEgg.show{opacity:1;transform:translateY(-50%) scale(1)}
 header .subtitle{margin:2px 0 4px;font-size:15px;font-weight:700;color:var(--tape);opacity:1}
 header p{margin:0;opacity:.7;font-size:13px}
 header{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
@@ -205,7 +210,7 @@ tr.bagmiss td{background:var(--warn-bg)}
 <body>
 <header>
   <div>
-    <h1>神逝虛空</h1>
+    <h1 id="appTitle">神逝虛空<span id="appEgg" aria-hidden="true">命名：Melvin</span></h1>
     <p class="subtitle">同品項訂單批次整理</p>
     <p>匯入客戶出庫單，相同組合的訂單分批包裝；組合太分散的散單分波用手機播種配貨；SG 用來檢查缺件與扣庫存</p>
   </div>
@@ -674,6 +679,7 @@ function renderGiftRules(){
 
 /* ★★★ 版本：每次改版在最上面加一筆（版本號、日期、內容） ★★★ */
 const CHANGELOG = [
+  ['1.35', '2026-11-27', '標題列小調整。'],
   ['1.34', '2026-11-27', '託運單：超商單（7-11、全家）沒上傳對照表時，改用託運單上的「取件人」比對（遮罩姓名「林*茹」＝第一個字和最後一個字），只跟還沒有託運單、物流不衝突的訂單比，只對到一張才自動配，同名多張列為候選交給人工（暮雨 11/27 超取分頁沒有店號、電話，沒上傳 711單號 csv 時 14 張全部比不到，現在 14 張全對上、與 csv 結果相同）。新增防呆：對照表配到的訂單姓名和託運單上的取件人不符時，不自動輸出、交給人工確認（暮雨 11/25 廠商的 711單號 csv 把同一家門市的兩張對調，照 csv 輸出會包錯貨）。'],
   ['1.33', '2026-11-27', '託運單修正（暮雨 11/27 缺件補出）：① 換訂單檔（新專案）或開別的專案時，自動清掉上一批的託運單，不會再把上一批的託運單拿去 OCR。② 訂單檔只有 1、2 張訂單、託運單整份上傳時，原本寄件人帳號、公司代碼這類每張託運單都有的編號會被當成「只屬於這張訂單」，整批託運單全配給它（輸出全部都是 #1）；現在出現在 3 張以上託運單的編號不拿來認訂單。③ 每張訂單都已經有託運單時，比不到的託運單是別批的：不跑 OCR，收合在「不屬於這批訂單」裡、不會輸出。④ OCR 只畫那一張託運單的範圍（不再整頁放大），只跟還沒有託運單的訂單比對（候選少、比較不會配錯），分頁標題顯示進度。⑤ 人工指定的下拉選單上面加搜尋框：可打單序、姓名、電話末幾碼、訂單編號，多個關鍵字用空白隔開，找不到時字依序出現也算（打「王明」找得到「王小明」），按 Enter 直接選第一筆。⑥ 物流方式欄是 0 或純數字時不當成物流名稱（託運單分組改用託運單上認出的物流）。'],
   ['1.32', '2026-11-26', '依新人審閱建議改：箱號改成「A箱01」，不再跟批次代號 A1 同名。物流上傳檔與 SG 出庫單的檔名開頭加全域序號（依單序、批次與散單共用、補零），檔案總管排序＝單序順序，有袋型、區名、物流時也不會亂。「依物流分段」改成跟著專案儲存（重新整理仍保留；新專案、舊專案一律從不勾開始，不會帶到別家廠商）。散單播種的單位改叫「波」（一個 SG 散單檔＝一波），「輪次」只用在分批到貨。左側區塊標題拿掉編號。功能已勾但區塊內還沒啟用時，區塊摘要會提示。用本機檔案開啟時，「發布播種任務」下方直接提示改用線上版。下載缺件檢查單後提醒區會一直提醒到 SG 刪掉檢查單，下載 SG 出庫單前也會再確認。散單相關說明改為用手機播種配貨。'],
@@ -3630,6 +3636,12 @@ $('#backupFile').addEventListener('change', async e => {
 /* 版本號與更新紀錄 */
 $('#verBtn').textContent = `v${APP_VERSION} · ${CHANGELOG[0][1]}`;
 document.title = `神逝虛空｜同品項訂單批次整理 v${APP_VERSION}`;
+// 彩蛋：滑鼠停在標題上 5 秒（手機長按 5 秒）出現命名者
+(() => { const t = $('#appTitle'), e = $('#appEgg'); if(!t || !e) return; let tm = null;
+  const on = () => { clearTimeout(tm); tm = setTimeout(() => e.classList.add('show'), 5000); };
+  const off = () => { clearTimeout(tm); e.classList.remove('show'); };
+  t.addEventListener('pointerenter', on); t.addEventListener('pointerleave', off); t.addEventListener('pointercancel', off);
+  t.addEventListener('contextmenu', ev => { if(ev.pointerType !== 'mouse') ev.preventDefault(); }); })();
 $('#changelogList').innerHTML = CHANGELOG.map(([v,d,c], i) =>
   `<li class="${i === 0 ? 'cur' : ''}"><span class="v">v${esc(v)}</span><span class="d">${esc(d)}</span><span class="c">${esc(c)}</span></li>`).join('');
 $('#verBtn').addEventListener('click', () => {
